@@ -7,12 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
 
 <style>
-html,body { 
-height: 100%;
-margin:0; 
-padding:0;
-}
-
+html,body { height: 100%; margin:0; padding:0; }
 body {
 font-family: "Press Start 2P", cursive;
 background: url("patintero-bg.png") no-repeat center center fixed;
@@ -166,6 +161,26 @@ background: #45a049;
   transition: transform 0.1s ease;
 }
 
+/* Level Complete Announcement */
+#levelCompleteOverlay {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 80vw;
+  max-width: 400px;
+  background: rgba(0, 255, 0, 0.8);
+  color: white;
+  padding: 20px;
+  border-radius: 10px;
+  text-align: center;
+  z-index: 1001;
+  display: none;
+  font-size: 4vw;
+  font-family: "Press Start 2P", cursive;
+  text-shadow: 1px 1px 0 black;
+}
+
 /* CHARACTER SPRITE SYSTEM */
 :root {
 --pixel-size: 2;
@@ -217,6 +232,12 @@ childhood favorite! Cross the lines and avoid the taggers.<br><br>
 <button id="startBtn">▶ START GAME</button>
 <button id="leaderboardBtn">🏆 Leaderboard</button>
 </div>
+
+<!-- Level Complete Announcement Overlay -->
+<div id="levelCompleteOverlay">
+  <h2 id="completeMessage">Level Complete!</h2>
+</div>
+
 <script>
 document.addEventListener("DOMContentLoaded", () => {
 const startBtn = document.getElementById("startBtn");
@@ -481,8 +502,8 @@ function initGame() {
   function moveBasedOnJoystick() {
     if (!joystickActive || gameEnded) return;
 
-    const threshold = 0.3; // Deadzone
-    let dx = 0, dy = 0, direction = 'face-down';
+       const threshold = 0.3;
+       let dx = 0, dy = 0, direction = 'face-down';
 
     if (Math.abs(currentDx) > threshold || Math.abs(currentDy) > threshold) {
       // Prioritize vertical over horizontal for 4-directional control
@@ -533,7 +554,26 @@ function initGame() {
     if (e.key === "ArrowDown" || e.key.toLowerCase() === "s") movePlayer(0, 20, "face-down");
   });
 
-  // Removed old touch/click controls in favor of joystick for mobile comfort
+  // Level Complete Announcement Function
+  function showLevelComplete() {
+    const overlay = document.getElementById('levelCompleteOverlay');
+    const messageEl = document.getElementById('completeMessage');
+    messageEl.textContent = `Level ${currentLevel} Complete!`;
+    overlay.style.display = 'block';
+
+    setTimeout(() => {
+      overlay.style.display = 'none';
+      // Proceed to next level
+      currentLevel++;
+      x = screenW * 0.5;
+      y = screenH * 0.85;
+      player.style.left = x + "px";
+      player.style.top = y + "px";
+      createBlockersForLevel(currentLevel);
+      updatePlayerInfo();
+      gameEnded = false;
+    }, 1500); // Show for 1.5 seconds
+  }
 
   // === BLOCKER CHASE + GAME OVER ===
   setInterval(() => {
@@ -551,7 +591,7 @@ function initGame() {
 
       let newBlockerX = blockerX;
 
-           // Blocker moves left/right only
+      // Blocker moves left/right only
       if (Math.abs(dx) > step) {
         newBlockerX = blockerX + step * Math.sign(dx);
         blk.style.left = newBlockerX + "px";
@@ -603,25 +643,15 @@ function initGame() {
       return;
     }
 
-    // ✅ Finish line check (pass last blocker)
-    if (y < 20 && !gameEnded) {
+    // ✅ Finish line check: Cross above the last blocker's line for current level
+    const lastLineY = linesY[currentLevel - 1];
+    if (y < lastLineY - 50 && !gameEnded) {  // 50px buffer for player size and proper crossing
       gameEnded = true;
       if (currentLevel < maxLevel) {
-        // Proceed to next level
-        currentLevel++;
-        // Reset player
-        x = screenW * 0.5;
-        y = screenH * 0.85;
-        player.style.left = x + "px";
-        player.style.top = y + "px";
-        // Recreate blockers
-        createBlockersForLevel(currentLevel);
-        // Update UI
-        updatePlayerInfo();
-        // Resume
-        gameEnded = false;
+        // Show level complete announcement and proceed
+        showLevelComplete();
       } else {
-        // Game complete
+        // Game complete - final win
         updatePlayerScore(playerName, maxLevel);
         const winScreen = document.createElement("div");
         winScreen.className = "overlay-card";
