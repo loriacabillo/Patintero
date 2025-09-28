@@ -2,12 +2,17 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Patintero Game</title>
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
 
 <style>
-html,body { height: 100%; margin:0; padding:0; touch-action: none; } /* Mobile: Prevent scrolling/zoom */
+html,body { 
+height: 100%; 
+margin:0; 
+padding:0; 
+}
+
 body {
 font-family: "Press Start 2P", cursive;
 background: url("patintero-bg.png") no-repeat center center fixed;
@@ -75,7 +80,6 @@ border-radius: 8px;
 background: rgba(255,255,255,0.9);
 font-family: inherit;
 text-align: center;
-touch-action: manipulation; /* Mobile input fix */
 }
 
 #startBtn, .submit-btn, #leaderboardBtn {
@@ -91,7 +95,6 @@ box-shadow: 0 4px 0 #0d47a1;
 z-index: 101;
 pointer-events: auto;
 margin: 2vw 0;
-touch-action: manipulation;
 }
 
 #leaderboardBtn {
@@ -134,7 +137,7 @@ background: #45a049;
   letter-spacing: 2px;
 }
 
-/* Joystick Styles (Mobile-Optimized) */
+/* Joystick Styles */
 #joystick {
   position: fixed;
   bottom: 20px;
@@ -148,7 +151,6 @@ background: #45a049;
   pointer-events: auto;
   display: none;
   transition: opacity 0.3s ease;
-  touch-action: none;
 }
 
 #knob {
@@ -162,7 +164,6 @@ background: #45a049;
   border-radius: 50%;
   transform: translate(-50%, -50%);
   transition: transform 0.1s ease;
-  touch-action: none;
 }
 
 /* Level Complete Announcement */
@@ -173,7 +174,7 @@ background: #45a049;
   transform: translate(-50%, -50%);
   width: 80vw;
   max-width: 400px;
-  background: rgba(0, 255, 0, 0.9);
+  background: rgba(0, 255, 0, 0.8);
   color: white;
   padding: 20px;
   border-radius: 10px;
@@ -183,28 +184,6 @@ background: #45a049;
   font-size: 4vw;
   font-family: "Press Start 2P", cursive;
   text-shadow: 1px 1px 0 black;
-  border: 3px solid yellow;
-  touch-action: manipulation;
-}
-
-/* Patintero Lines (Visual Aid - Court Width) */
-.patintero-line {
-  position: fixed;
-  left: 10%;
-  width: 80%;
-  height: 4px;
-  background: repeating-linear-gradient(
-    to right,
-    transparent,
-    transparent 20px,
-    yellow 20px,
-    yellow 24px
-  );
-  opacity: 0.7;
-  z-index: 500;
-  pointer-events: none;
-  display: none;
-  border-radius: 2px;
 }
 
 /* CHARACTER SPRITE SYSTEM */
@@ -240,8 +219,22 @@ image-rendering: pixelated;
 .face-left { top: calc(-96px * var(--pixel-size)); }
 
 @keyframes moveSpritesheet {
-from { transform: translate3d(0px,0,0) }
-to { transform: translate3d(-100%,0,0) }
+from { 
+transform: translate3d(0px,0,0) 
+}
+to { 
+transform: translate3d(-100%,0,0) 
+}
+}
+
+.finish-line {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: 6px;
+  background: linear-gradient(to right, #ff0000, #ffff00, #00ff00);
+  box-shadow: 0 0 12px 3px rgba(255, 255, 0, 0.8);
+  z-index: 5;
 }
 </style>
 </head>
@@ -253,7 +246,7 @@ to { transform: translate3d(-100%,0,0) }
 🏃 Relive the excitement of a Filipino
 childhood favorite! Cross the lines and avoid the taggers.<br><br>
 👉 Use <b>ARROW KEYS / WASD</b> on desktop or <b>VIRTUAL JOYSTICK</b> on mobile to move.<br>
-🏁 Cross above the yellow dashed lines without being tagged!
+🏁 Reach the opposite side without being tagged!
 </p>
 <button id="startBtn">▶ START GAME</button>
 <button id="leaderboardBtn">🏆 Leaderboard</button>
@@ -272,17 +265,10 @@ let playerName = '';
 let currentLevel = 1;
 let maxLevel = 5;
 let gameEnded = false;
-let levelCompleted = false;
-let gameReady = false;
-let startupGraceTicks = 3; // Skip first 3 loops (450ms grace)
-let initialY; // Track if player has moved up
 let x, y;
 let screenW, screenH;
 let blockers = [];
 let linesY = [];
-let lineElements = [];
-let inputDisabled = false;
-let isMobile = false; // Detect for speed tweaks
 
 // Joystick variables
 let joystickActive = false;
@@ -292,7 +278,7 @@ let currentDx = 0;
 let currentDy = 0;
 let joystickInterval = null;
 
-// Leaderboard functions (unchanged)
+// ApiLeaderboard functions
 function getLeaderboard() {
   return JSON.parse(localStorage.getItem('patinteroLeaderboard') || '[]');
 }
@@ -335,6 +321,14 @@ function showLeaderboard() {
   document.body.appendChild(lbOverlay);
   document.getElementById("closeLb").addEventListener("click", () => {
     lbOverlay.remove();
+    const gameOverEl = document.getElementById("gameOverOverlay");
+    if (gameOverEl) {
+      gameOverEl.style.display = "flex";
+    }
+    const winEl = document.getElementById("winOverlay");
+    if (winEl) {
+      winEl.style.display = "flex";
+    }
   });
 }
 
@@ -343,6 +337,7 @@ leaderboardBtn.addEventListener("click", showLeaderboard);
 startBtn.addEventListener("click", () => {
   document.getElementById("homeScreen").style.display = "none";
 
+  // Username Input Overlay
   const nameOverlay = document.createElement("div");
   nameOverlay.className = "overlay-card";
   nameOverlay.id = "nameOverlay";
@@ -364,58 +359,37 @@ startBtn.addEventListener("click", () => {
       return;
     }
     playerName = name;
-    localStorage.setItem('patinteroPlayer', JSON.stringify({ name: playerName, currentLevel: currentLevel, maxLevel: maxLevel }));
+
+    // Store in JSON for API (localStorage example; can be sent to API later)
+    const playerData = {
+      name: playerName,
+      currentLevel: currentLevel,
+      maxLevel: maxLevel
+    };
+    localStorage.setItem('patinteroPlayer', JSON.stringify(playerData));
+
     nameOverlay.remove();
+
+    // Initialize Game
     initGame();
   });
 
+  // Allow Enter key for username
   usernameInput.addEventListener("keypress", (e) => {
-    if (e.key === "Enter") submitNameBtn.click();
-  });
-});
-
-function updateScreenDimensions() {
-  screenW = window.innerWidth;
-  screenH = window.innerHeight;
-  isMobile = screenW < 600; // Detect small screens
-  // Safer positions for mobile (more buffer)
-  linesY = [
-    screenH * 0.75,  // Level 1: Higher for ~150px+ dy
-    screenH * 0.62,
-    screenH * 0.48,
-    screenH * 0.34,
-    screenH * 0.20
-  ];
-  lineElements.forEach((line, i) => {
-    if (i < currentLevel) {
-      line.style.top = linesY[i] + 'px';
-      line.style.display = 'block';
-    } else {
-      line.style.display = 'none';
+    if (e.key === "Enter") {
+      submitNameBtn.click();
     }
   });
-  blockers.forEach((blk, i) => {
-    if (i < blockers.length && linesY[i]) {
-      blk.style.top = linesY[i] + 'px';
-    }
-  });
-  // Reposition player if needed
-  if (player) {
-    player.style.left = x + "px";
-    player.style.top = y + "px";
-  }
-}
-
-window.addEventListener('resize', updateScreenDimensions);
-window.addEventListener('orientationchange', () => {
-  setTimeout(updateScreenDimensions, 100); // Smooth rotation
 });
 
 function initGame() {
-  updateScreenDimensions();
+  screenW = window.innerWidth;
+  screenH = window.innerHeight;
+
   document.body.style.background = "url('playground.png') no-repeat center center fixed";
   document.body.style.backgroundSize = "cover";
 
+  // UI Elements
   const uiLeft = document.createElement("div");
   uiLeft.id = "ui-left";
   uiLeft.className = "top-ui";
@@ -430,32 +404,33 @@ function initGame() {
 
   updatePlayerInfo();
 
-  // Create visual lines
-  for (let i = 0; i < 5; i++) {
-    const line = document.createElement('div');
-    line.className = 'patintero-line';
-    document.body.appendChild(line);
-    lineElements.push(line);
-  }
+  // Lines for blockers (from bottom to top)
+  linesY = [
+    screenH * 0.75,
+    screenH * 0.60,
+    screenH * 0.45,
+    screenH * 0.30,
+    screenH * 0.15
+  ];
 
-  // Player (even lower for buffer)
+  // === PLAYER SPRITE ===
   const player = document.createElement("div");
   player.className = "Character";
   x = screenW * 0.5;
-  y = screenH * 0.92; // Very bottom
-  initialY = y; // Track initial
+  y = screenH - 100; // start closer to bottom
   player.style.left = x + "px";
   player.style.top = y + "px";
   player.setAttribute("facing", "down");
-    player.innerHTML = `
+  player.innerHTML = `
     <img class="Character_shadow pixelart" src="https://s3-us-west-2.amazonaws.com/s.cdpn.io/21542/DemoRpgCharacterShadow.png" />
     <img class="Character_spritesheet pixelart face-down" src="AjFP5.png" />
   `;
   document.body.appendChild(player);
 
+  // Create initial blockers
   createBlockersForLevel(currentLevel);
 
-  // Joystick setup (mobile-optimized)
+  // === JOYSTICK SETUP (for mobile/touch devices) ===
   const joystick = document.createElement('div');
   joystick.id = 'joystick';
   const knob = document.createElement('div');
@@ -463,47 +438,47 @@ function initGame() {
   joystick.appendChild(knob);
   document.body.appendChild(joystick);
 
-  if ('ontouchstart' in window || isMobile) {
+  // Show joystick on touch devices
+  if ('ontouchstart' in window) {
     joystick.style.display = 'block';
   }
 
+  // Joystick event handlers
   const joystickElement = document.getElementById('joystick');
   const knobElement = document.getElementById('knob');
 
   joystickElement.addEventListener('touchstart', (e) => {
-    if (gameEnded || inputDisabled || !gameReady) return;
+    if (gameEnded) return;
     e.preventDefault();
-    e.stopPropagation();
     joystickActive = true;
     const rect = joystickElement.getBoundingClientRect();
     joystickCenterX = rect.left + rect.width / 2;
     joystickCenterY = rect.top + rect.height / 2;
     updateKnob(e.touches[0].clientX, e.touches[0].clientY);
     startJoystickMovement();
-  }, { passive: false });
+  });
 
   joystickElement.addEventListener('touchmove', (e) => {
-    if (!joystickActive || gameEnded || inputDisabled || !gameReady) return;
+    if (!joystickActive || gameEnded) return;
     e.preventDefault();
-    e.stopPropagation();
     updateKnob(e.touches[0].clientX, e.touches[0].clientY);
-  }, { passive: false });
+  });
 
   joystickElement.addEventListener('touchend', (e) => {
-    if (gameEnded || inputDisabled) return;
+    if (gameEnded) return;
     e.preventDefault();
     joystickActive = false;
     currentDx = 0;
     currentDy = 0;
     knobElement.style.transform = 'translate(-50%, -50%)';
     stopJoystickMovement();
-  }, { passive: false });
+  });
 
   function updateKnob(touchX, touchY) {
     const deltaX = touchX - joystickCenterX;
     const deltaY = touchY - joystickCenterY;
     const dist = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
-    const maxDist = 30;
+    const maxDist = 30; // Max drag distance
 
     let normalizedDx = 0;
     let normalizedDy = 0;
@@ -528,12 +503,12 @@ function initGame() {
   function startJoystickMovement() {
     if (joystickInterval) clearInterval(joystickInterval);
     joystickInterval = setInterval(() => {
-      if (!joystickActive || gameEnded || inputDisabled || !gameReady) {
+      if (!joystickActive || gameEnded) {
         stopJoystickMovement();
         return;
       }
       moveBasedOnJoystick();
-    }, 120);
+    }, 150); 
   }
 
   function stopJoystickMovement() {
@@ -544,27 +519,26 @@ function initGame() {
   }
 
   function moveBasedOnJoystick() {
-    if (!joystickActive || gameEnded || inputDisabled || !gameReady) return;
+    if (!joystickActive || gameEnded) return;
 
-    const threshold = 0.3;
-    let dx = 0, dy = 0, direction = 'face-down';
+       const threshold = 0.3;
+       let dx = 0, dy = 0, direction = 'face-down';
 
     if (Math.abs(currentDx) > threshold || Math.abs(currentDy) > threshold) {
-      // Prioritize vertical for crossing
       if (Math.abs(currentDy) > Math.abs(currentDx)) {
         if (currentDy < -threshold) {
-          dy = -25;
+          dy = -15;
           direction = 'face-up';
         } else if (currentDy > threshold) {
-          dy = 25;
+          dy = 15;
           direction = 'face-down';
         }
       } else {
         if (currentDx < -threshold) {
-          dx = -25;
+          dx = -15;
           direction = 'face-left';
         } else if (currentDx > threshold) {
-          dx = 25;
+          dx = 15;
           direction = 'face-right';
         }
       }
@@ -572,41 +546,31 @@ function initGame() {
     }
   }
 
-  // === PLAYER MOVEMENT ===
   gameEnded = false;
-  setTimeout(() => {
-    gameReady = true;
-    console.log("Game Ready - You can now move!"); // Debug
-  }, 500); // Extended delay for mobile touch
 
   function movePlayer(dx, dy, direction) {
-    if (gameEnded || inputDisabled || !gameReady) return;
+    if (gameEnded) return;
     x += dx;
     y += dy;
-    if (y !== initialY) initialY = null; // Mark as moved
-    const playerSize = 64;
+    const playerSize = 64; 
     x = Math.max(0, Math.min(screenW - playerSize, x));
     y = Math.max(0, Math.min(screenH - playerSize, y));
     const sprite = player.querySelector(".Character_spritesheet");
-    if (sprite) sprite.className = `Character_spritesheet pixelart ${direction}`;
+    sprite.className = `Character_spritesheet pixelart ${direction}`;
     player.style.left = x + "px";
     player.style.top = y + "px";
   }
 
-  // Keyboard controls (desktop/laptop)
+  // Keyboard controls
   window.addEventListener("keydown", e => {
-    if (gameEnded || inputDisabled || !gameReady) return;
-    e.preventDefault();
-    if (e.key === "ArrowLeft" || e.key.toLowerCase() === "a") movePlayer(-25, 0, "face-left");
-    if (e.key === "ArrowRight" || e.key.toLowerCase() === "d") movePlayer(25, 0, "face-right");
-    if (e.key === "ArrowUp" || e.key.toLowerCase() === "w") movePlayer(0, -25, "face-up");
-    if (e.key === "ArrowDown" || e.key.toLowerCase() === "s") movePlayer(0, 25, "face-down");
+    if (gameEnded) return;
+    if (e.key === "ArrowLeft" || e.key.toLowerCase() === "a") movePlayer(-15, 0, "face-left");
+    if (e.key === "ArrowRight" || e.key.toLowerCase() === "d") movePlayer(15, 0, "face-right");
+    if (e.key === "ArrowUp" || e.key.toLowerCase() === "w") movePlayer(0, -15, "face-up");
+    if (e.key === "ArrowDown" || e.key.toLowerCase() === "s") movePlayer(0, 15, "face-down");
   });
 
-  // Level Complete Announcement
   function showLevelComplete() {
-    inputDisabled = true;
-    levelCompleted = true;
     const overlay = document.getElementById('levelCompleteOverlay');
     const messageEl = document.getElementById('completeMessage');
     messageEl.textContent = `Level ${currentLevel} Complete!`;
@@ -614,78 +578,53 @@ function initGame() {
 
     setTimeout(() => {
       overlay.style.display = 'none';
-      inputDisabled = false;
       currentLevel++;
-      levelCompleted = false;
       x = screenW * 0.5;
-      y = screenH * 0.92;
-      initialY = y; // Reset tracking
+      y = screenH - 100;
       player.style.left = x + "px";
       player.style.top = y + "px";
       createBlockersForLevel(currentLevel);
       updatePlayerInfo();
-      updateScreenDimensions();
       gameEnded = false;
-      // Reset grace for new level
-      setTimeout(() => {
-        gameReady = true;
-        startupGraceTicks = 3;
-        console.log(`Level ${currentLevel} Ready!`);
-      }, 500);
-    }, 2000);
+    }, 1500); 
   }
 
-  // === GAME LOOP: Blocker Chase + Checks ===
+  // === BLOCKER CHASE + GAME OVER ===
   setInterval(() => {
-    if (!gameReady || inputDisabled || levelCompleted || gameEnded) return;
-
-    // Grace period: Skip first 3 ticks (450ms)
-    if (startupGraceTicks > 0) {
-      startupGraceTicks--;
-      return; // No movement/collision during grace
-    }
-
-    // Skip collision if player hasn't moved up yet (prevents startup tag)
-    if (initialY !== null && y === initialY) {
-      return; // Wait for first upward move
-    }
+    if (gameEnded) return;
 
     const playerX = x;
     let tagged = false;
 
-    // Dynamic speed for devices
-    const blockerStep = isMobile ? 15 : 20;
-    const courtLeft = screenW * 0.1;
-    const courtRight = screenW * 0.9;
-    const collisionThreshold = 50; // Forgiving for mobile
-
     blockers.forEach(blk => {
-      const blockerX = parseInt(blk.style.left) || 0;
-      const blockerY = parseInt(blk.style.top) || 0;
+      const blockerX = parseInt(blk.style.left);
+      const blockerY = parseInt(blk.style.top);
       const dx = playerX - blockerX;
       const dy = y - blockerY;
+      const step = 20;
 
       let newBlockerX = blockerX;
 
-      if (Math.abs(dx) > blockerStep) {
-        newBlockerX = blockerX + blockerStep * Math.sign(dx);
+      if (Math.abs(dx) > step) {
+        newBlockerX = blockerX + step * Math.sign(dx);
+        blk.style.left = newBlockerX + "px";
       }
 
-      // Bounds with bounce
-      if (newBlockerX < courtLeft) newBlockerX = courtLeft + (courtLeft - newBlockerX);
-      if (newBlockerX > courtRight - 64) newBlockerX = (courtRight - 64) - (newBlockerX - (courtRight - 64));
-
-      blk.style.left = newBlockerX + "px";
       blk.style.top = blockerY + "px";
 
-      // Face player
-      let faceDir = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? "face-right" : "face-left") : (dy > 0 ? "face-down" : "face-up");
+      let faceDir;
+      if (Math.abs(dy) > Math.abs(dx)) {
+        faceDir = dy > 0 ? "face-down" : "face-up";
+      } else {
+        faceDir = dx > 0 ? "face-right" : "face-left";
+      }
       const sprite = blk.querySelector(".Character_spritesheet");
-      if (sprite) sprite.className = `Character_spritesheet pixelart ${faceDir}`;
+      sprite.className = `Character_spritesheet pixelart ${faceDir}`;
 
-      // Collision check (after grace and move)
       const distanceX = Math.abs(playerX - newBlockerX);
       const distanceY = Math.abs(y - blockerY);
+      const collisionThreshold = 40;
+
       if (distanceX < collisionThreshold && distanceY < collisionThreshold) {
         tagged = true;
       }
@@ -706,18 +645,17 @@ function initGame() {
       document.body.appendChild(gameOver);
       document.getElementById("viewLbAfter")?.addEventListener("click", () => {
         const gameOverEl = document.getElementById("gameOverOverlay");
-        if (gameOverEl) gameOverEl.style.display = "none";
+        if (gameOverEl) {
+          gameOverEl.style.display = "none";
+        }
         showLeaderboard();
       });
       return;
     }
 
-    // Finish line check (reliable for all devices)
-    const lastLineY = linesY[currentLevel - 1];
-    const playerSize = 64;
-    const buffer = 32;
-    if (y + playerSize < lastLineY - buffer && !levelCompleted && !gameEnded) {
-      console.log(`Level ${currentLevel} Complete! Player y: ${y}, Line: ${lastLineY}`); // Debug
+    // ✅ Finish line check
+    const targetLineY = linesY[currentLevel - 1];
+    if (y <= targetLineY && !gameEnded) {
       gameEnded = true;
       if (currentLevel < maxLevel) {
         showLevelComplete();
@@ -735,40 +673,24 @@ function initGame() {
         document.body.appendChild(winScreen);
         document.getElementById("viewLbWin")?.addEventListener("click", () => {
           const winEl = document.getElementById("winOverlay");
-          if (winEl) winEl.style.display = "none";
+          if (winEl) {
+            winEl.style.display = "none";
+          }
           showLeaderboard();
         });
       }
     }
-  }, 150); // Loop interval
+  }, 200);
 }
 
 function createBlockersForLevel(level) {
   blockers.forEach(blk => blk.remove());
   blockers = [];
 
-  const courtLeft = screenW * 0.1;
-  const courtRight = screenW * 0.9 - 64;
-  const offset = isMobile ? 30 : 50; // Smaller offset on mobile
-  const minDistFromPlayer = 100; // Ensure min distance from player x
-
   for (let i = 0; i < level; i++) {
     const blocker = document.createElement("div");
     blocker.className = "Character";
-    let startX;
-    // Level 1: Always far left
-    if (i === 0) {
-      startX = courtLeft + offset;
-    } else {
-      // Alternate for others, but ensure min distance
-      startX = (i % 2 === 0) ? courtLeft + offset : courtRight - offset;
-      // Adjust if too close to player
-      if (Math.abs(startX - x) < minDistFromPlayer) {
-        startX = (startX < x) ? startX - minDistFromPlayer : startX + minDistFromPlayer;
-        startX = Math.max(courtLeft + offset, Math.min(courtRight - offset, startX));
-      }
-    }
-    blocker.style.left = startX + "px";
+    blocker.style.left = screenW * 0.5 + "px";
     blocker.style.top = linesY[i] + "px";
     blocker.setAttribute("facing", "down");
     blocker.innerHTML = `
@@ -778,16 +700,6 @@ function createBlockersForLevel(level) {
     document.body.appendChild(blocker);
     blockers.push(blocker);
   }
-
-  // Update lines
-  lineElements.forEach((line, i) => {
-    if (i < level) {
-      line.style.top = linesY[i] + 'px';
-      line.style.display = 'block';
-    } else {
-      line.style.display = 'none';
-    }
-  });
 }
 
 function updatePlayerInfo() {
@@ -800,3 +712,4 @@ function updatePlayerInfo() {
 </script>
 </body>
 </html>
+
