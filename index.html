@@ -8,9 +8,9 @@
 
 <style>
 html,body { 
-height: 100%; 
+height: 100%;
 margin:0; 
-padding:0; 
+padding:0;
 }
 
 body {
@@ -166,26 +166,6 @@ background: #45a049;
   transition: transform 0.1s ease;
 }
 
-/* Level Complete Announcement */
-#levelCompleteOverlay {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 80vw;
-  max-width: 400px;
-  background: rgba(0, 255, 0, 0.8);
-  color: white;
-  padding: 20px;
-  border-radius: 10px;
-  text-align: center;
-  z-index: 1001;
-  display: none;
-  font-size: 4vw;
-  font-family: "Press Start 2P", cursive;
-  text-shadow: 1px 1px 0 black;
-}
-
 /* CHARACTER SPRITE SYSTEM */
 :root {
 --pixel-size: 2;
@@ -219,22 +199,8 @@ image-rendering: pixelated;
 .face-left { top: calc(-96px * var(--pixel-size)); }
 
 @keyframes moveSpritesheet {
-from { 
-transform: translate3d(0px,0,0) 
-}
-to { 
-transform: translate3d(-100%,0,0) 
-}
-}
-
-.finish-line {
-  position: absolute;
-  left: 0;
-  width: 100%;
-  height: 6px;
-  background: linear-gradient(to right, #ff0000, #ffff00, #00ff00);
-  box-shadow: 0 0 12px 3px rgba(255, 255, 0, 0.8);
-  z-index: 5;
+from { transform: translate3d(0px,0,0) }
+to { transform: translate3d(-100%,0,0) }
 }
 </style>
 </head>
@@ -251,12 +217,6 @@ childhood favorite! Cross the lines and avoid the taggers.<br><br>
 <button id="startBtn">▶ START GAME</button>
 <button id="leaderboardBtn">🏆 Leaderboard</button>
 </div>
-
-<!-- Level Complete Announcement Overlay -->
-<div id="levelCompleteOverlay">
-  <h2 id="completeMessage">Level Complete!</h2>
-</div>
-
 <script>
 document.addEventListener("DOMContentLoaded", () => {
 const startBtn = document.getElementById("startBtn");
@@ -417,7 +377,7 @@ function initGame() {
   const player = document.createElement("div");
   player.className = "Character";
   x = screenW * 0.5;
-  y = screenH - 100; // start closer to bottom
+  y = screenH * 0.85;
   player.style.left = x + "px";
   player.style.top = y + "px";
   player.setAttribute("facing", "down");
@@ -508,7 +468,7 @@ function initGame() {
         return;
       }
       moveBasedOnJoystick();
-    }, 150); 
+    }, 150); // Move every 150ms for responsive but not too fast movement
   }
 
   function stopJoystickMovement() {
@@ -521,24 +481,25 @@ function initGame() {
   function moveBasedOnJoystick() {
     if (!joystickActive || gameEnded) return;
 
-       const threshold = 0.3;
-       let dx = 0, dy = 0, direction = 'face-down';
+    const threshold = 0.3; // Deadzone
+    let dx = 0, dy = 0, direction = 'face-down';
 
     if (Math.abs(currentDx) > threshold || Math.abs(currentDy) > threshold) {
+      // Prioritize vertical over horizontal for 4-directional control
       if (Math.abs(currentDy) > Math.abs(currentDx)) {
         if (currentDy < -threshold) {
-          dy = -15;
+          dy = -20;
           direction = 'face-up';
         } else if (currentDy > threshold) {
-          dy = 15;
+          dy = 20;
           direction = 'face-down';
         }
       } else {
         if (currentDx < -threshold) {
-          dx = -15;
+          dx = -20;
           direction = 'face-left';
         } else if (currentDx > threshold) {
-          dx = 15;
+          dx = 20;
           direction = 'face-right';
         }
       }
@@ -546,13 +507,15 @@ function initGame() {
     }
   }
 
+  // === PLAYER MOVEMENT ===
   gameEnded = false;
 
   function movePlayer(dx, dy, direction) {
     if (gameEnded) return;
     x += dx;
     y += dy;
-    const playerSize = 64; 
+    // Bounds
+    const playerSize = 64; // 32 * 2
     x = Math.max(0, Math.min(screenW - playerSize, x));
     y = Math.max(0, Math.min(screenH - playerSize, y));
     const sprite = player.querySelector(".Character_spritesheet");
@@ -561,33 +524,16 @@ function initGame() {
     player.style.top = y + "px";
   }
 
-  // Keyboard controls
+  // Keyboard controls (desktop)
   window.addEventListener("keydown", e => {
     if (gameEnded) return;
-    if (e.key === "ArrowLeft" || e.key.toLowerCase() === "a") movePlayer(-15, 0, "face-left");
-    if (e.key === "ArrowRight" || e.key.toLowerCase() === "d") movePlayer(15, 0, "face-right");
-    if (e.key === "ArrowUp" || e.key.toLowerCase() === "w") movePlayer(0, -15, "face-up");
-    if (e.key === "ArrowDown" || e.key.toLowerCase() === "s") movePlayer(0, 15, "face-down");
+    if (e.key === "ArrowLeft" || e.key.toLowerCase() === "a") movePlayer(-20, 0, "face-left");
+    if (e.key === "ArrowRight" || e.key.toLowerCase() === "d") movePlayer(20, 0, "face-right");
+    if (e.key === "ArrowUp" || e.key.toLowerCase() === "w") movePlayer(0, -20, "face-up");
+    if (e.key === "ArrowDown" || e.key.toLowerCase() === "s") movePlayer(0, 20, "face-down");
   });
 
-  function showLevelComplete() {
-    const overlay = document.getElementById('levelCompleteOverlay');
-    const messageEl = document.getElementById('completeMessage');
-    messageEl.textContent = `Level ${currentLevel} Complete!`;
-    overlay.style.display = 'block';
-
-    setTimeout(() => {
-      overlay.style.display = 'none';
-      currentLevel++;
-      x = screenW * 0.5;
-      y = screenH - 100;
-      player.style.left = x + "px";
-      player.style.top = y + "px";
-      createBlockersForLevel(currentLevel);
-      updatePlayerInfo();
-      gameEnded = false;
-    }, 1500); 
-  }
+  // Removed old touch/click controls in favor of joystick for mobile comfort
 
   // === BLOCKER CHASE + GAME OVER ===
   setInterval(() => {
@@ -605,13 +551,16 @@ function initGame() {
 
       let newBlockerX = blockerX;
 
+           // Blocker moves left/right only
       if (Math.abs(dx) > step) {
         newBlockerX = blockerX + step * Math.sign(dx);
         blk.style.left = newBlockerX + "px";
       }
 
+      // Keep blocker on the line
       blk.style.top = blockerY + "px";
 
+      // Face towards player
       let faceDir;
       if (Math.abs(dy) > Math.abs(dx)) {
         faceDir = dy > 0 ? "face-down" : "face-up";
@@ -621,6 +570,7 @@ function initGame() {
       const sprite = blk.querySelector(".Character_spritesheet");
       sprite.className = `Character_spritesheet pixelart ${faceDir}`;
 
+      // Collision detection (using new position)
       const distanceX = Math.abs(playerX - newBlockerX);
       const distanceY = Math.abs(y - blockerY);
       const collisionThreshold = 40;
@@ -653,13 +603,25 @@ function initGame() {
       return;
     }
 
-    // ✅ Finish line check
-    const targetLineY = linesY[currentLevel - 1];
-    if (y <= targetLineY && !gameEnded) {
+    // ✅ Finish line check (pass last blocker)
+    if (y < 20 && !gameEnded) {
       gameEnded = true;
       if (currentLevel < maxLevel) {
-        showLevelComplete();
+        // Proceed to next level
+        currentLevel++;
+        // Reset player
+        x = screenW * 0.5;
+        y = screenH * 0.85;
+        player.style.left = x + "px";
+        player.style.top = y + "px";
+        // Recreate blockers
+        createBlockersForLevel(currentLevel);
+        // Update UI
+        updatePlayerInfo();
+        // Resume
+        gameEnded = false;
       } else {
+        // Game complete
         updatePlayerScore(playerName, maxLevel);
         const winScreen = document.createElement("div");
         winScreen.className = "overlay-card";
@@ -684,6 +646,7 @@ function initGame() {
 }
 
 function createBlockersForLevel(level) {
+  // Remove existing blockers
   blockers.forEach(blk => blk.remove());
   blockers = [];
 
