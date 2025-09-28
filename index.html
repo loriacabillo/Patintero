@@ -7,12 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
 
 <style>
-html,body { 
-height: 100%; 
-margin:0; 
-padding:0;
-}
-
+html,body { height: 100%; margin:0; padding:0; }
 body {
 font-family: "Press Start 2P", cursive;
 background: url("patintero-bg.png") no-repeat center center fixed;
@@ -272,13 +267,15 @@ let playerName = '';
 let currentLevel = 1;
 let maxLevel = 5;
 let gameEnded = false;
-let levelCompleted = false; // Flag to prevent multiple triggers per level
+let levelCompleted = false;
+let gameReady = false; // New: Delay collision checks on startup
+let startupGrace = true; // New: Ignore first tick collision
 let x, y;
 let screenW, screenH;
 let blockers = [];
 let linesY = [];
-let lineElements = []; // For visual lines
-let inputDisabled = false; // Disable inputs during announcements
+let lineElements = [];
+let inputDisabled = false;
 
 // Joystick variables
 let joystickActive = false;
@@ -288,7 +285,7 @@ let currentDx = 0;
 let currentDy = 0;
 let joystickInterval = null;
 
-// ApiLeaderboard functions (unchanged)
+// Leaderboard functions (unchanged)
 function getLeaderboard() {
   return JSON.parse(localStorage.getItem('patinteroLeaderboard') || '[]');
 }
@@ -339,7 +336,6 @@ leaderboardBtn.addEventListener("click", showLeaderboard);
 startBtn.addEventListener("click", () => {
   document.getElementById("homeScreen").style.display = "none";
 
-  // Username Input Overlay (unchanged)
   const nameOverlay = document.createElement("div");
   nameOverlay.className = "overlay-card";
   nameOverlay.id = "nameOverlay";
@@ -374,15 +370,14 @@ startBtn.addEventListener("click", () => {
 function updateScreenDimensions() {
   screenW = window.innerWidth;
   screenH = window.innerHeight;
-  // Adjusted linesY for better Patintero court fit (lower start, even spacing, avoid sky)
+  // Adjusted for safer initial distance (first line higher, player lower)
   linesY = [
-    screenH * 0.80,  // Level 1: Bottom line
-    screenH * 0.65,  // Level 2
-    screenH * 0.50,  // Level 3: Middle
-    screenH * 0.35,  // Level 4
-    screenH * 0.20   // Level 5: Top line (still in court, not sky)
+    screenH * 0.78,  // Level 1: Slightly higher for buffer
+    screenH * 0.65,
+    screenH * 0.50,
+    screenH * 0.35,
+    screenH * 0.20
   ];
-  // Update visual lines and blockers
   lineElements.forEach((line, i) => {
     if (i < currentLevel) {
       line.style.top = linesY[i] + 'px';
@@ -391,7 +386,6 @@ function updateScreenDimensions() {
       line.style.display = 'none';
     }
   });
-  // Reposition existing blockers to new lines
   blockers.forEach((blk, i) => {
     if (i < blockers.length && linesY[i]) {
       blk.style.top = linesY[i] + 'px';
@@ -399,7 +393,6 @@ function updateScreenDimensions() {
   });
 }
 
-// Window resize handler
 window.addEventListener('resize', updateScreenDimensions);
 
 function initGame() {
@@ -407,7 +400,6 @@ function initGame() {
   document.body.style.background = "url('playground.png') no-repeat center center fixed";
   document.body.style.backgroundSize = "cover";
 
-  // UI Elements (unchanged)
   const uiLeft = document.createElement("div");
   uiLeft.id = "ui-left";
   uiLeft.className = "top-ui";
@@ -422,7 +414,7 @@ function initGame() {
 
   updatePlayerInfo();
 
-  // Create visual patintero lines (court width) - CONTINUATION FROM HERE
+  // Create visual lines
   for (let i = 0; i < 5; i++) {
     const line = document.createElement('div');
     line.className = 'patintero-line';
@@ -430,11 +422,11 @@ function initGame() {
     lineElements.push(line);
   }
 
-  // Player Sprite (unchanged)
+  // Player (lower start for buffer)
   const player = document.createElement("div");
   player.className = "Character";
   x = screenW * 0.5;
-  y = screenH * 0.85;
+  y = screenH * 0.88; // Lower for safer dy
   player.style.left = x + "px";
   player.style.top = y + "px";
   player.setAttribute("facing", "down");
@@ -446,7 +438,7 @@ function initGame() {
 
   createBlockersForLevel(currentLevel);
 
-  // Joystick Setup (updated for bounds and speed)
+  // Joystick setup (unchanged)
   const joystick = document.createElement('div');
   joystick.id = 'joystick';
   const knob = document.createElement('div');
@@ -454,16 +446,19 @@ function initGame() {
   joystick.appendChild(knob);
   document.body.appendChild(joystick);
 
-  // Show joystick on touch devices
   if ('ontouchstart' in window) {
     joystick.style.display = 'block';
   }
 
-  // Joystick event handlers
   const joystickElement = document.getElementById('joystick');
   const knobElement = document.getElementById('knob');
 
   joystickElement.addEventListener('touchstart', (e) => {
+    if (gameEnded || inputDisabled) return;
+    e.preventDefault();
+    joystickActive = true;
+    const rect = joystickElement.getBounding;
+      joystickElement.addEventListener('touchstart', (e) => {
     if (gameEnded || inputDisabled) return;
     e.preventDefault();
     joystickActive = true;
@@ -524,7 +519,7 @@ function initGame() {
         return;
       }
       moveBasedOnJoystick();
-    }, 120); // Responsive interval
+    }, 120);
   }
 
   function stopJoystickMovement() {
@@ -541,10 +536,9 @@ function initGame() {
     let dx = 0, dy = 0, direction = 'face-down';
 
     if (Math.abs(currentDx) > threshold || Math.abs(currentDy) > threshold) {
-      // Prioritize vertical for Patintero crossing
       if (Math.abs(currentDy) > Math.abs(currentDx)) {
         if (currentDy < -threshold) {
-          dy = -25; // Speed for easier upper-level crossing
+          dy = -25;
           direction = 'face-up';
         } else if (currentDy > threshold) {
           dy = 25;
@@ -565,12 +559,12 @@ function initGame() {
 
   // === PLAYER MOVEMENT ===
   gameEnded = false;
+  setTimeout(() => { gameReady = true; }, 300); // Delay collision checks
 
   function movePlayer(dx, dy, direction) {
     if (gameEnded || inputDisabled) return;
     x += dx;
     y += dy;
-    // Bounds (full screen, but can be court-limited if needed)
     const playerSize = 64;
     x = Math.max(0, Math.min(screenW - playerSize, x));
     y = Math.max(0, Math.min(screenH - playerSize, y));
@@ -580,10 +574,9 @@ function initGame() {
     player.style.top = y + "px";
   }
 
-  // Keyboard controls (desktop/laptop)
+  // Keyboard controls
   window.addEventListener("keydown", e => {
     if (gameEnded || inputDisabled) return;
-    // Prevent default to avoid scrolling on laptop
     e.preventDefault();
     if (e.key === "ArrowLeft" || e.key.toLowerCase() === "a") movePlayer(-25, 0, "face-left");
     if (e.key === "ArrowRight" || e.key.toLowerCase() === "d") movePlayer(25, 0, "face-right");
@@ -591,10 +584,10 @@ function initGame() {
     if (e.key === "ArrowDown" || e.key.toLowerCase() === "s") movePlayer(0, 25, "face-down");
   });
 
-  // Level Complete Announcement Function
+  // Level Complete Announcement
   function showLevelComplete() {
     inputDisabled = true;
-    levelCompleted = true; // Prevent multiple triggers
+    levelCompleted = true;
     const overlay = document.getElementById('levelCompleteOverlay');
     const messageEl = document.getElementById('completeMessage');
     messageEl.textContent = `Level ${currentLevel} Complete!`;
@@ -603,28 +596,28 @@ function initGame() {
     setTimeout(() => {
       overlay.style.display = 'none';
       inputDisabled = false;
-      // Proceed to next level
       currentLevel++;
-      levelCompleted = false; // Reset flag
+      levelCompleted = false;
       x = screenW * 0.5;
-      y = screenH * 0.85;
+      y = screenH * 0.88;
       player.style.left = x + "px";
       player.style.top = y + "px";
       createBlockersForLevel(currentLevel);
       updatePlayerInfo();
-      updateScreenDimensions(); // Recalculate for new level
+      updateScreenDimensions();
       gameEnded = false;
-    }, 2000); // 2 seconds visibility
+      setTimeout(() => { gameReady = true; }, 300); // Reset delay for new level
+    }, 2000);
   }
 
-  // === BLOCKER CHASE + GAME OVER ===
+  // === GAME LOOP: Blocker Chase + Checks ===
   setInterval(() => {
-    if (gameEnded || inputDisabled || levelCompleted) return;
+    if (!gameReady || inputDisabled || levelCompleted) return;
 
     const playerX = x;
     let tagged = false;
 
-    // Court bounds for blockers (real Patintero: 10%-90% width patrol)
+    // Court bounds
     const courtLeft = screenW * 0.1;
     const courtRight = screenW * 0.9;
     const blockerStep = 20;
@@ -637,35 +630,43 @@ function initGame() {
 
       let newBlockerX = blockerX;
 
-      // Horizontal movement only (chase player x)
       if (Math.abs(dx) > blockerStep) {
         newBlockerX = blockerX + blockerStep * Math.sign(dx);
       }
 
-      // Enforce bounds (stay on court, bounce at edges like real taggers)
-      if (newBlockerX < courtLeft) newBlockerX = courtLeft + (courtLeft - newBlockerX); // Simple bounce
+      // Bounds with bounce
+      if (newBlockerX < courtLeft) newBlockerX = courtLeft + (courtLeft - newBlockerX);
       if (newBlockerX > courtRight - 64) newBlockerX = (courtRight - 64) - (newBlockerX - (courtRight - 64));
 
       blk.style.left = newBlockerX + "px";
-      blk.style.top = blockerY + "px"; // Fixed on line
+      blk.style.top = blockerY + "px";
 
       // Face player
-      let faceDir = (dx > 0) ? "face-right" : "face-left"; // Prioritize horizontal
+      let faceDir = (dx > 0) ? "face-right" : "face-left";
       if (Math.abs(dy) > Math.abs(dx)) {
         faceDir = (dy > 0) ? "face-down" : "face-up";
       }
       const sprite = blk.querySelector(".Character_spritesheet");
       sprite.className = `Character_spritesheet pixelart ${faceDir}`;
 
-      // Collision (after move)
+      // Collision (stricter vertical)
       const distanceX = Math.abs(playerX - newBlockerX);
       const distanceY = Math.abs(y - blockerY);
-      const collisionThreshold = 40;
+      const collisionThresholdX = 40;
+      const collisionThresholdY = 35; // Tighter for vertical
 
-      if (distanceX < collisionThreshold && distanceY < collisionThreshold) {
+      // Ignore first tick (startup grace)
+      if (startupGrace && distanceX < collisionThresholdX && distanceY < collisionThresholdY) {
+        startupGrace = false; // Only once
+        return;
+      }
+
+      if (distanceX < collisionThresholdX && distanceY < collisionThresholdY) {
         tagged = true;
       }
     });
+
+    startupGrace = false; // Disable after first loop
 
     if (tagged) {
       gameEnded = true;
@@ -688,18 +689,16 @@ function initGame() {
       return;
     }
 
-    // ✅ Finish line check: Improved for levels 3-5 (laptop reliability)
+    // Finish line check
     const lastLineY = linesY[currentLevel - 1];
     const playerSize = 64;
-    const buffer = 32; // Relaxed buffer for upper lines
-    // Check if player's bottom is fully above the line (no prevY dependency to avoid skips)
+    const buffer = 32;
     if (y + playerSize < lastLineY - buffer && !levelCompleted && !gameEnded) {
-      // console.log(`Triggering Level ${currentLevel} Complete! Player bottom: ${y + playerSize}, Line: ${lastLineY}`); // Debug log
+      // console.log(`Triggering Level ${currentLevel} Complete!`); // Debug
       gameEnded = true;
       if (currentLevel < maxLevel) {
         showLevelComplete();
       } else {
-        // Final win
         updatePlayerScore(playerName, maxLevel);
         const winScreen = document.createElement("div");
         winScreen.className = "overlay-card";
@@ -718,25 +717,29 @@ function initGame() {
         });
       }
     }
-  }, 150); // Faster interval for precise detection on higher levels/laptops
+  }, 150);
 }
 
 function createBlockersForLevel(level) {
-  // Remove existing blockers
   blockers.forEach(blk => blk.remove());
   blockers = [];
 
-  // Court bounds for initial positions
   const courtLeft = screenW * 0.1;
   const courtRight = screenW * 0.9 - 64;
+  const offset = 50; // Small offset from edge
 
   for (let i = 0; i < level; i++) {
     const blocker = document.createElement("div");
     blocker.className = "Character";
-    // Randomized start x within court (fits lines better)
-    const startX = courtLeft + (Math.random() * (courtRight - courtLeft));
+    // Alternating start: Left for even i, right for odd (safer initial distance)
+    let startX;
+    if (i % 2 === 0) {
+      startX = courtLeft + offset; // Left side
+    } else {
+      startX = courtRight - offset; // Right side
+    }
     blocker.style.left = startX + "px";
-    blocker.style.top = linesY[i] + "px"; // Fixed on line
+    blocker.style.top = linesY[i] + "px";
     blocker.setAttribute("facing", "down");
     blocker.innerHTML = `
       <img class="Character_shadow pixelart" src="https://s3-us-west-2.amazonaws.com/s.cdpn.io/21542/DemoRpgCharacterShadow.png" />
@@ -746,7 +749,6 @@ function createBlockersForLevel(level) {
     blockers.push(blocker);
   }
 
-  // Update visual lines (only up to current level)
   lineElements.forEach((line, i) => {
     if (i < level) {
       line.style.top = linesY[i] + 'px';
@@ -767,5 +769,3 @@ function updatePlayerInfo() {
 </script>
 </body>
 </html>
-
-      
