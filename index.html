@@ -2,12 +2,12 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
 <title>Patintero Game</title>
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
 
 <style>
-html,body { height: 100%; margin:0; padding:0; }
+html,body { height: 100%; margin:0; padding:0; touch-action: none; } /* Mobile: Prevent scrolling/zoom */
 body {
 font-family: "Press Start 2P", cursive;
 background: url("patintero-bg.png") no-repeat center center fixed;
@@ -75,6 +75,7 @@ border-radius: 8px;
 background: rgba(255,255,255,0.9);
 font-family: inherit;
 text-align: center;
+touch-action: manipulation; /* Mobile input fix */
 }
 
 #startBtn, .submit-btn, #leaderboardBtn {
@@ -90,6 +91,7 @@ box-shadow: 0 4px 0 #0d47a1;
 z-index: 101;
 pointer-events: auto;
 margin: 2vw 0;
+touch-action: manipulation;
 }
 
 #leaderboardBtn {
@@ -132,7 +134,7 @@ background: #45a049;
   letter-spacing: 2px;
 }
 
-/* Joystick Styles */
+/* Joystick Styles (Mobile-Optimized) */
 #joystick {
   position: fixed;
   bottom: 20px;
@@ -146,6 +148,7 @@ background: #45a049;
   pointer-events: auto;
   display: none;
   transition: opacity 0.3s ease;
+  touch-action: none;
 }
 
 #knob {
@@ -159,6 +162,7 @@ background: #45a049;
   border-radius: 50%;
   transform: translate(-50%, -50%);
   transition: transform 0.1s ease;
+  touch-action: none;
 }
 
 /* Level Complete Announcement */
@@ -180,13 +184,14 @@ background: #45a049;
   font-family: "Press Start 2P", cursive;
   text-shadow: 1px 1px 0 black;
   border: 3px solid yellow;
+  touch-action: manipulation;
 }
 
 /* Patintero Lines (Visual Aid - Court Width) */
 .patintero-line {
   position: fixed;
   left: 10%;
-  width: 80%; /* Court width for real Patintero feel */
+  width: 80%;
   height: 4px;
   background: repeating-linear-gradient(
     to right,
@@ -268,14 +273,16 @@ let currentLevel = 1;
 let maxLevel = 5;
 let gameEnded = false;
 let levelCompleted = false;
-let gameReady = false; // New: Delay collision checks on startup
-let startupGrace = true; // New: Ignore first tick collision
+let gameReady = false;
+let startupGraceTicks = 3; // Skip first 3 loops (450ms grace)
+let initialY; // Track if player has moved up
 let x, y;
 let screenW, screenH;
 let blockers = [];
 let linesY = [];
 let lineElements = [];
 let inputDisabled = false;
+let isMobile = false; // Detect for speed tweaks
 
 // Joystick variables
 let joystickActive = false;
@@ -370,12 +377,13 @@ startBtn.addEventListener("click", () => {
 function updateScreenDimensions() {
   screenW = window.innerWidth;
   screenH = window.innerHeight;
-  // Adjusted for safer initial distance (first line higher, player lower)
+  isMobile = screenW < 600; // Detect small screens
+  // Safer positions for mobile (more buffer)
   linesY = [
-    screenH * 0.78,  // Level 1: Slightly higher for buffer
-    screenH * 0.65,
-    screenH * 0.50,
-    screenH * 0.35,
+    screenH * 0.75,  // Level 1: Higher for ~150px+ dy
+    screenH * 0.62,
+    screenH * 0.48,
+    screenH * 0.34,
     screenH * 0.20
   ];
   lineElements.forEach((line, i) => {
@@ -391,9 +399,17 @@ function updateScreenDimensions() {
       blk.style.top = linesY[i] + 'px';
     }
   });
+  // Reposition player if needed
+  if (player) {
+    player.style.left = x + "px";
+    player.style.top = y + "px";
+  }
 }
 
 window.addEventListener('resize', updateScreenDimensions);
+window.addEventListener('orientationchange', () => {
+  setTimeout(updateScreenDimensions, 100); // Smooth rotation
+});
 
 function initGame() {
   updateScreenDimensions();
@@ -422,15 +438,16 @@ function initGame() {
     lineElements.push(line);
   }
 
-  // Player (lower start for buffer)
+  // Player (even lower for buffer)
   const player = document.createElement("div");
   player.className = "Character";
   x = screenW * 0.5;
-  y = screenH * 0.88; // Lower for safer dy
+  y = screenH * 0.92; // Very bottom
+  initialY = y; // Track initial
   player.style.left = x + "px";
   player.style.top = y + "px";
   player.setAttribute("facing", "down");
-  player.innerHTML = `
+    player.innerHTML = `
     <img class="Character_shadow pixelart" src="https://s3-us-west-2.amazonaws.com/s.cdpn.io/21542/DemoRpgCharacterShadow.png" />
     <img class="Character_spritesheet pixelart face-down" src="AjFP5.png" />
   `;
@@ -438,7 +455,7 @@ function initGame() {
 
   createBlockersForLevel(currentLevel);
 
-  // Joystick setup (unchanged)
+  // Joystick setup (mobile-optimized)
   const joystick = document.createElement('div');
   joystick.id = 'joystick';
   const knob = document.createElement('div');
@@ -446,7 +463,7 @@ function initGame() {
   joystick.appendChild(knob);
   document.body.appendChild(joystick);
 
-  if ('ontouchstart' in window) {
+  if ('ontouchstart' in window || isMobile) {
     joystick.style.display = 'block';
   }
 
@@ -454,26 +471,23 @@ function initGame() {
   const knobElement = document.getElementById('knob');
 
   joystickElement.addEventListener('touchstart', (e) => {
-    if (gameEnded || inputDisabled) return;
+    if (gameEnded || inputDisabled || !gameReady) return;
     e.preventDefault();
-    joystickActive = true;
-    const rect = joystickElement.getBounding;
-      joystickElement.addEventListener('touchstart', (e) => {
-    if (gameEnded || inputDisabled) return;
-    e.preventDefault();
+    e.stopPropagation();
     joystickActive = true;
     const rect = joystickElement.getBoundingClientRect();
     joystickCenterX = rect.left + rect.width / 2;
     joystickCenterY = rect.top + rect.height / 2;
     updateKnob(e.touches[0].clientX, e.touches[0].clientY);
     startJoystickMovement();
-  });
+  }, { passive: false });
 
   joystickElement.addEventListener('touchmove', (e) => {
-    if (!joystickActive || gameEnded || inputDisabled) return;
+    if (!joystickActive || gameEnded || inputDisabled || !gameReady) return;
     e.preventDefault();
+    e.stopPropagation();
     updateKnob(e.touches[0].clientX, e.touches[0].clientY);
-  });
+  }, { passive: false });
 
   joystickElement.addEventListener('touchend', (e) => {
     if (gameEnded || inputDisabled) return;
@@ -483,7 +497,7 @@ function initGame() {
     currentDy = 0;
     knobElement.style.transform = 'translate(-50%, -50%)';
     stopJoystickMovement();
-  });
+  }, { passive: false });
 
   function updateKnob(touchX, touchY) {
     const deltaX = touchX - joystickCenterX;
@@ -514,7 +528,7 @@ function initGame() {
   function startJoystickMovement() {
     if (joystickInterval) clearInterval(joystickInterval);
     joystickInterval = setInterval(() => {
-      if (!joystickActive || gameEnded || inputDisabled) {
+      if (!joystickActive || gameEnded || inputDisabled || !gameReady) {
         stopJoystickMovement();
         return;
       }
@@ -530,12 +544,13 @@ function initGame() {
   }
 
   function moveBasedOnJoystick() {
-    if (!joystickActive || gameEnded || inputDisabled) return;
+    if (!joystickActive || gameEnded || inputDisabled || !gameReady) return;
 
     const threshold = 0.3;
     let dx = 0, dy = 0, direction = 'face-down';
 
     if (Math.abs(currentDx) > threshold || Math.abs(currentDy) > threshold) {
+      // Prioritize vertical for crossing
       if (Math.abs(currentDy) > Math.abs(currentDx)) {
         if (currentDy < -threshold) {
           dy = -25;
@@ -559,24 +574,28 @@ function initGame() {
 
   // === PLAYER MOVEMENT ===
   gameEnded = false;
-  setTimeout(() => { gameReady = true; }, 300); // Delay collision checks
+  setTimeout(() => {
+    gameReady = true;
+    console.log("Game Ready - You can now move!"); // Debug
+  }, 500); // Extended delay for mobile touch
 
   function movePlayer(dx, dy, direction) {
-    if (gameEnded || inputDisabled) return;
+    if (gameEnded || inputDisabled || !gameReady) return;
     x += dx;
     y += dy;
+    if (y !== initialY) initialY = null; // Mark as moved
     const playerSize = 64;
     x = Math.max(0, Math.min(screenW - playerSize, x));
     y = Math.max(0, Math.min(screenH - playerSize, y));
     const sprite = player.querySelector(".Character_spritesheet");
-    sprite.className = `Character_spritesheet pixelart ${direction}`;
+    if (sprite) sprite.className = `Character_spritesheet pixelart ${direction}`;
     player.style.left = x + "px";
     player.style.top = y + "px";
   }
 
-  // Keyboard controls
+  // Keyboard controls (desktop/laptop)
   window.addEventListener("keydown", e => {
-    if (gameEnded || inputDisabled) return;
+    if (gameEnded || inputDisabled || !gameReady) return;
     e.preventDefault();
     if (e.key === "ArrowLeft" || e.key.toLowerCase() === "a") movePlayer(-25, 0, "face-left");
     if (e.key === "ArrowRight" || e.key.toLowerCase() === "d") movePlayer(25, 0, "face-right");
@@ -599,32 +618,50 @@ function initGame() {
       currentLevel++;
       levelCompleted = false;
       x = screenW * 0.5;
-      y = screenH * 0.88;
+      y = screenH * 0.92;
+      initialY = y; // Reset tracking
       player.style.left = x + "px";
       player.style.top = y + "px";
       createBlockersForLevel(currentLevel);
       updatePlayerInfo();
       updateScreenDimensions();
       gameEnded = false;
-      setTimeout(() => { gameReady = true; }, 300); // Reset delay for new level
+      // Reset grace for new level
+      setTimeout(() => {
+        gameReady = true;
+        startupGraceTicks = 3;
+        console.log(`Level ${currentLevel} Ready!`);
+      }, 500);
     }, 2000);
   }
 
   // === GAME LOOP: Blocker Chase + Checks ===
   setInterval(() => {
-    if (!gameReady || inputDisabled || levelCompleted) return;
+    if (!gameReady || inputDisabled || levelCompleted || gameEnded) return;
+
+    // Grace period: Skip first 3 ticks (450ms)
+    if (startupGraceTicks > 0) {
+      startupGraceTicks--;
+      return; // No movement/collision during grace
+    }
+
+    // Skip collision if player hasn't moved up yet (prevents startup tag)
+    if (initialY !== null && y === initialY) {
+      return; // Wait for first upward move
+    }
 
     const playerX = x;
     let tagged = false;
 
-    // Court bounds
+    // Dynamic speed for devices
+    const blockerStep = isMobile ? 15 : 20;
     const courtLeft = screenW * 0.1;
     const courtRight = screenW * 0.9;
-    const blockerStep = 20;
+    const collisionThreshold = 50; // Forgiving for mobile
 
     blockers.forEach(blk => {
-      const blockerX = parseInt(blk.style.left);
-      const blockerY = parseInt(blk.style.top);
+      const blockerX = parseInt(blk.style.left) || 0;
+      const blockerY = parseInt(blk.style.top) || 0;
       const dx = playerX - blockerX;
       const dy = y - blockerY;
 
@@ -642,31 +679,17 @@ function initGame() {
       blk.style.top = blockerY + "px";
 
       // Face player
-      let faceDir = (dx > 0) ? "face-right" : "face-left";
-      if (Math.abs(dy) > Math.abs(dx)) {
-        faceDir = (dy > 0) ? "face-down" : "face-up";
-      }
+      let faceDir = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? "face-right" : "face-left") : (dy > 0 ? "face-down" : "face-up");
       const sprite = blk.querySelector(".Character_spritesheet");
-      sprite.className = `Character_spritesheet pixelart ${faceDir}`;
+      if (sprite) sprite.className = `Character_spritesheet pixelart ${faceDir}`;
 
-      // Collision (stricter vertical)
+      // Collision check (after grace and move)
       const distanceX = Math.abs(playerX - newBlockerX);
       const distanceY = Math.abs(y - blockerY);
-      const collisionThresholdX = 40;
-      const collisionThresholdY = 35; // Tighter for vertical
-
-      // Ignore first tick (startup grace)
-      if (startupGrace && distanceX < collisionThresholdX && distanceY < collisionThresholdY) {
-        startupGrace = false; // Only once
-        return;
-      }
-
-      if (distanceX < collisionThresholdX && distanceY < collisionThresholdY) {
+      if (distanceX < collisionThreshold && distanceY < collisionThreshold) {
         tagged = true;
       }
     });
-
-    startupGrace = false; // Disable after first loop
 
     if (tagged) {
       gameEnded = true;
@@ -689,12 +712,12 @@ function initGame() {
       return;
     }
 
-    // Finish line check
+    // Finish line check (reliable for all devices)
     const lastLineY = linesY[currentLevel - 1];
     const playerSize = 64;
     const buffer = 32;
     if (y + playerSize < lastLineY - buffer && !levelCompleted && !gameEnded) {
-      // console.log(`Triggering Level ${currentLevel} Complete!`); // Debug
+      console.log(`Level ${currentLevel} Complete! Player y: ${y}, Line: ${lastLineY}`); // Debug
       gameEnded = true;
       if (currentLevel < maxLevel) {
         showLevelComplete();
@@ -717,7 +740,7 @@ function initGame() {
         });
       }
     }
-  }, 150);
+  }, 150); // Loop interval
 }
 
 function createBlockersForLevel(level) {
@@ -726,17 +749,24 @@ function createBlockersForLevel(level) {
 
   const courtLeft = screenW * 0.1;
   const courtRight = screenW * 0.9 - 64;
-  const offset = 50; // Small offset from edge
+  const offset = isMobile ? 30 : 50; // Smaller offset on mobile
+  const minDistFromPlayer = 100; // Ensure min distance from player x
 
   for (let i = 0; i < level; i++) {
     const blocker = document.createElement("div");
     blocker.className = "Character";
-    // Alternating start: Left for even i, right for odd (safer initial distance)
     let startX;
-    if (i % 2 === 0) {
-      startX = courtLeft + offset; // Left side
+    // Level 1: Always far left
+    if (i === 0) {
+      startX = courtLeft + offset;
     } else {
-      startX = courtRight - offset; // Right side
+      // Alternate for others, but ensure min distance
+      startX = (i % 2 === 0) ? courtLeft + offset : courtRight - offset;
+      // Adjust if too close to player
+      if (Math.abs(startX - x) < minDistFromPlayer) {
+        startX = (startX < x) ? startX - minDistFromPlayer : startX + minDistFromPlayer;
+        startX = Math.max(courtLeft + offset, Math.min(courtRight - offset, startX));
+      }
     }
     blocker.style.left = startX + "px";
     blocker.style.top = linesY[i] + "px";
@@ -749,6 +779,7 @@ function createBlockersForLevel(level) {
     blockers.push(blocker);
   }
 
+  // Update lines
   lineElements.forEach((line, i) => {
     if (i < level) {
       line.style.top = linesY[i] + 'px';
