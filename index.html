@@ -1,350 +1,245 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Patintero Game</title>
-<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
-
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Patintero Retro</title>
 <style>
-html,body { height: 100%; margin:0; padding:0; }
-body {
-  font-family: "Press Start 2P", cursive;
-  background: url("patintero-bg.png") no-repeat center center fixed;
-  background-size: cover;
-  overflow: hidden;
-}
-
-.overlay-card {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 90vw;
-  max-width: 600px;
-  background: rgba(0,0,0,0.2);
-  backdrop-filter: blur(5px);
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  text-align: center;
-  padding: 5vw;
-  z-index: 100;
-}
-
-.overlay-card h2 {
-  margin-top: 0;
-  color: yellow;
-  font-size: 5vw;
-  letter-spacing: 2px;
-  text-shadow: 2px 2px 0 #000;
-}
-
-.overlay-card p {
-  font-size: 3vw;
-  margin: 5vw 0;
-  line-height: 1.6em;
-  color: #fff;
-  text-shadow: 1px 1px 0 #000;
-  max-width: 90vw;
-}
-
-.overlay-card input {
-  padding: 3vw;
-  font-size: 3vw;
-  width: 70%;
-  margin: 2vw 0;
-  border: 2px solid #fff;
-  border-radius: 8px;
-  background: rgba(255,255,255,0.9);
-  font-family: inherit;
-  text-align: center;
-}
-
-#startBtn, .submit-btn, #leaderboardBtn {
-  padding: 3vw 6vw;
-  font-size: 3vw;
-  background: #2196f3;
-  color: #fff;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.18s ease;
-  box-shadow: 0 4px 0 #0d47a1;
-  margin: 2vw 0;
-}
-
-#leaderboardBtn {
-  background: #4caf50;
-  box-shadow: 0 4px 0 #388e3c;
-}
-
-#startBtn:hover, .submit-btn:hover, #leaderboardBtn:hover {
-  transform: scale(1.06);
-}
-
-/* UI */
-.top-ui {
-  position: fixed;
-  top: 10px;
-  z-index: 1000;
-  color: white;
-  text-shadow: 1px 1px 0 black;
-  font-size: clamp(8px, 2vw, 16px);
-  line-height: 1.2;
-}
-#ui-left { left: 10px; }
-#ui-right { right: 10px; text-align: right; }
-#ui-right h3 {
-  color: yellow;
-  font-size: clamp(12px, 4vw, 24px);
-  margin: 0;
-  letter-spacing: 2px;
-}
-
-/* Joystick */
-#joystick {
-  position: fixed;
-  bottom: 20px;
-  left: 20px;
-  width: 100px;
-  height: 100px;
-  background: rgba(255, 255, 255, 0.3);
-  border: 2px solid rgba(255, 255, 255, 0.5);
-  border-radius: 50%;
-  z-index: 999;
-  display: none;
-}
-#knob {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 40px;
-  height: 40px;
-  background: rgba(255, 255, 255, 0.7);
-  border: 2px solid rgba(255, 255, 255, 0.9);
-  border-radius: 50%;
-  transform: translate(-50%, -50%);
-}
-
-/* Level Complete */
-#levelCompleteOverlay {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 80vw;
-  max-width: 400px;
-  background: rgba(0, 255, 0, 0.8);
-  color: white;
-  padding: 20px;
-  border-radius: 10px;
-  text-align: center;
-  z-index: 1001;
-  display: none;
-  font-size: 4vw;
-  font-family: "Press Start 2P", cursive;
-  text-shadow: 1px 1px 0 black;
-}
-
-/* SPRITE SYSTEM */
-:root { --pixel-size: 2; }
-.Character {
-  width: calc(32px * var(--pixel-size));
-  height: calc(32px * var(--pixel-size));
-  overflow: hidden;
-  position: absolute;
-}
-.Character_spritesheet {
-  animation: moveSpritesheet 1s steps(4) infinite;
-  width: calc(128px * var(--pixel-size));
-  position: absolute;
-}
-.pixelart { image-rendering: pixelated; }
-.face-down { top: 0; }
-.face-right { top: calc(-32px * var(--pixel-size)); }
-.face-up { top: calc(-64px * var(--pixel-size)); }
-.face-left { top: calc(-96px * var(--pixel-size)); }
-@keyframes moveSpritesheet {
-  from { transform: translate3d(0px,0,0) }
-  to { transform: translate3d(-100%,0,0) }
-}
+  body {
+    margin: 0;
+    background: black;
+    overflow: hidden;
+    font-family: "Press Start 2P", monospace;
+    color: white;
+  }
+  .Character {
+    position: absolute;
+    width: 48px;
+    height: 48px;
+    image-rendering: pixelated;
+  }
+  .Character img {
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    background: transparent; /* ✅ Remove solid BG */
+  }
+  #finishLine {
+    position: absolute;
+    top: 5%;
+    left: 0;
+    width: 100%;
+    height: 20px;
+    background: limegreen;
+    box-shadow: 0 0 15px lime;
+  }
+  #playerInfo {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    font-size: 12px;
+    z-index: 1000;
+  }
+  /* ✅ Joystick */
+  #joystick {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.1);
+    border: 2px solid white;
+    touch-action: none;
+    z-index: 2000;
+  }
+  #stick {
+    position: absolute;
+    width: 40px;
+    height: 40px;
+    top: 30px;
+    left: 30px;
+    background: white;
+    border-radius: 50%;
+  }
 </style>
 </head>
 <body>
-<!-- Home Screen -->
-<div class="overlay-card" id="homeScreen">
-  <h2>Patintero</h2>
-  <p>
-    🏃 Relive the excitement of a Filipino childhood favorite!<br><br>
-    👉 Use <b>ARROW KEYS / WASD</b> on desktop or <b>JOYSTICK</b> on mobile.<br>
-    🏁 Reach the top without being tagged!
-  </p>
-  <button id="startBtn">▶ START GAME</button>
-  <button id="leaderboardBtn">🏆 Leaderboard</button>
-</div>
-
-<div id="levelCompleteOverlay"><h2 id="completeMessage">Level Complete!</h2></div>
+<div id="playerInfo">Player | Level: 1</div>
+<div id="finishLine"></div>
+<div id="joystick"><div id="stick"></div></div>
 
 <script>
 document.addEventListener("DOMContentLoaded", () => {
-  const startBtn = document.getElementById("startBtn");
-  const leaderboardBtn = document.getElementById("leaderboardBtn");
-  let playerName = "";
+  const screenW = window.innerWidth;
+  const screenH = window.innerHeight;
+
+  let playerName = "Player";
   let currentLevel = 1;
   let maxLevel = 5;
   let gameEnded = false;
-  let x, y, screenW, screenH;
+
+  // === PLAYER ===
+  const player = document.createElement("div");
+  player.className = "Character";
+  player.style.left = screenW * 0.5 + "px";
+  player.style.top = screenH * 0.85 + "px";
+  player.innerHTML = `<img src="player.png" alt="player"/>`; // ✅ transparent sprite
+  document.body.appendChild(player);
+
+  let x = screenW * 0.5;
+  let y = screenH * 0.85;
+
+  function movePlayer(dx, dy) {
+    if (gameEnded) return;
+    x += dx;
+    y += dy;
+    if (x < 0) x = 0;
+    if (y < 0) y = 0;
+    if (x > screenW - 48) x = screenW - 48;
+    if (y > screenH - 48) y = screenH - 48;
+    player.style.left = x + "px";
+    player.style.top = y + "px";
+  }
+
+  // === BLOCKERS ===
   let blockers = [];
-  let linesY = [];
+  function createBlockersForLevel(level) {
+    blockers.forEach(b => b.remove());
+    blockers = [];
+    const numBlockers = Math.min(level, 5);
+    const gap = (screenH * 0.7) / (numBlockers + 1);
 
-  // Leaderboard
-  function getLeaderboard() {
-    return JSON.parse(localStorage.getItem("patinteroLeaderboard") || "[]");
-  }
-  function saveLeaderboard(lb) {
-    localStorage.setItem("patinteroLeaderboard", JSON.stringify(lb));
-  }
-  function updatePlayerScore(name, levels) {
-    let lb = getLeaderboard();
-    let entry = lb.find(p => p.name.toLowerCase() === name.toLowerCase());
-    if (entry) entry.levels = Math.max(entry.levels, levels);
-    else lb.push({ name, levels });
-    lb.sort((a,b)=>b.levels-a.levels);
-    saveLeaderboard(lb);
-  }
-  function showLeaderboard() {
-    const lb = getLeaderboard().slice(0,10);
-    let html = "<h2>🏆 Leaderboard</h2><ul>";
-    html += lb.length? lb.map((p,i)=>`<li>${i+1}. ${p.name} - ${p.levels} Lv</li>`).join("") : "<li>No scores yet!</li>";
-    html += "</ul><button class='submit-btn' id='closeLb'>Close</button>";
-    const el = document.createElement("div");
-    el.className="overlay-card"; el.id="lbOverlay"; el.innerHTML=html;
-    document.body.appendChild(el);
-    document.getElementById("closeLb").onclick=()=>el.remove();
-  }
-  leaderboardBtn.onclick=showLeaderboard;
+    const baseSpeed = 2 + level * 1.2; // ✅ Speed increases per level
 
-  startBtn.onclick=()=>{
-    document.getElementById("homeScreen").style.display="none";
-    const nameOverlay=document.createElement("div");
-    nameOverlay.className="overlay-card"; nameOverlay.id="nameOverlay";
-    nameOverlay.innerHTML=`<h2>Enter Name</h2><input id="username"><button class="submit-btn" id="submitName">▶ START</button>`;
-    document.body.appendChild(nameOverlay);
-    document.getElementById("submitName").onclick=()=>{
-      playerName=document.getElementById("username").value.trim();
-      if(!playerName){alert("Enter name");return;}
-      nameOverlay.remove();
-      initGame();
-    };
-  };
-
-  function initGame(){
-    screenW=innerWidth; screenH=innerHeight;
-    document.body.style.background="url('playground.png') no-repeat center/cover";
-
-    // UI
-    const uiLeft=document.createElement("div");
-    uiLeft.id="ui-left"; uiLeft.className="top-ui";
-    uiLeft.innerHTML="<div id='playerInfo'></div>";
-    document.body.appendChild(uiLeft);
-    const uiRight=document.createElement("div");
-    uiRight.id="ui-right"; uiRight.className="top-ui";
-    uiRight.innerHTML="<h3>PATINTERO</h3>";
-    document.body.appendChild(uiRight);
-    updatePlayerInfo();
-
-    // Lines
-    linesY=[.75,.6,.45,.3,.15].map(v=>screenH*v);
-
-    // Player
-    const player=document.createElement("div");
-    player.className="Character"; x=screenW*0.5; y=screenH*0.85;
-    player.style.left=x+"px"; player.style.top=y+"px";
-    player.innerHTML=`<img class="Character_spritesheet pixelart face-down" src="AjFP5.png">`;
-    document.body.appendChild(player);
-
-    createBlockersForLevel(currentLevel);
-
-    // Move Player
-    function movePlayer(dx,dy,dir){
-      if(gameEnded)return;
-      x=Math.max(0,Math.min(screenW-64,x+dx));
-      y=Math.max(0,Math.min(screenH-64,y+dy));
-      player.style.left=x+"px"; player.style.top=y+"px";
-      player.querySelector(".Character_spritesheet").className=`Character_spritesheet pixelart ${dir}`;
+    for (let i=0;i<numBlockers;i++) {
+      const blocker = document.createElement("div");
+      blocker.className = "Character";
+      blocker.style.left = Math.random() * (screenW - 48) + "px";
+      blocker.style.top = screenH * 0.15 + i * gap + "px";
+      blocker.innerHTML = `<img src="blocker.png" alt="blocker"/>`; // ✅ transparent sprite
+      blocker.dataset.vx = (Math.random() > 0.5 ? baseSpeed : -baseSpeed);
+      blocker.dataset.vy = (Math.random() > 0.5 ? baseSpeed : -baseSpeed);
+      document.body.appendChild(blocker);
+      blockers.push(blocker);
     }
+  }
 
-    // Keyboard
-    addEventListener("keydown",e=>{
-      if(gameEnded)return;
-      if(e.key==="ArrowLeft"||e.key==="a")movePlayer(-20,0,"face-left");
-      if(e.key==="ArrowRight"||e.key==="d")movePlayer(20,0,"face-right");
-      if(e.key==="ArrowUp"||e.key==="w")movePlayer(0,-20,"face-up");
-      if(e.key==="ArrowDown"||e.key==="s")movePlayer(0,20,"face-down");
+  function updateBlockers() {
+    blockers.forEach(b => {
+      let bx = parseFloat(b.style.left);
+      let by = parseFloat(b.style.top);
+      let vx = parseFloat(b.dataset.vx);
+      let vy = parseFloat(b.dataset.vy);
+
+      bx += vx;
+      by += vy;
+
+      if (bx <= 0 || bx >= screenW - 48) {
+        vx *= -1;
+      }
+      if (by <= screenH * 0.15 || by >= screenH * 0.85) {
+        vy *= -1;
+      }
+
+      b.style.left = bx + "px";
+      b.style.top = by + "px";
+      b.dataset.vx = vx;
+      b.dataset.vy = vy;
     });
-
-    // Blocker AI with zigzag + speed scaling
-    setInterval(()=>{
-      if(gameEnded)return;
-      let tagged=false;
-      blockers.forEach(b=>{
-        let bx=parseInt(b.style.left),by=parseInt(b.style.top);
-        let vx=parseFloat(b.dataset.vx),vy=parseFloat(b.dataset.vy);
-        bx+=vx; by+=vy;
-        if(bx<=0||bx>=screenW-64) b.dataset.vx=-vx;
-        if(by<=linesY[0]-50||by>=linesY[linesY.length-1]+50) b.dataset.vy=-vy;
-        b.style.left=bx+"px"; b.style.top=by+"px";
-        // collision
-        if(Math.abs(x-bx)<40 && Math.abs(y-by)<40) tagged=true;
-      });
-      if(tagged){ gameOver(); return; }
-      if(y<linesY[currentLevel-1]-50) levelComplete();
-    },60);
-
-    function levelComplete(){
-      gameEnded=true;
-      const ov=document.getElementById("levelCompleteOverlay");
-      ov.style.display="block"; document.getElementById("completeMessage").textContent=`Level ${currentLevel} Complete!`;
-      setTimeout(()=>{
-        ov.style.display="none"; currentLevel++;
-        if(currentLevel>maxLevel){win();return;}
-        x=screenW*.5;y=screenH*.85;player.style.left=x+"px";player.style.top=y+"px";
-        createBlockersForLevel(currentLevel);updatePlayerInfo();gameEnded=false;
-      },1500);
-    }
-    function gameOver(){
-      gameEnded=true;updatePlayerScore(playerName,currentLevel-1);
-      const el=document.createElement("div");
-      el.className="overlay-card";el.innerHTML=`<h2>😵 GAME OVER!</h2><p>Tagged at Level ${currentLevel}</p><button class="submit-btn" onclick="location.reload()">Restart</button>`;
-      document.body.appendChild(el);
-    }
-    function win(){
-      updatePlayerScore(playerName,maxLevel);
-      const el=document.createElement("div");
-      el.className="overlay-card";el.innerHTML=`<h2>🎉 YOU WIN!</h2><p>All ${maxLevel} levels!</p><button class="submit-btn" onclick="location.reload()">Play Again</button>`;
-      document.body.appendChild(el);
-    }
   }
 
-  function createBlockersForLevel(lv){
-    blockers.forEach(b=>b.remove());blockers=[];
-    let baseSpeed=2+lv; // speed scales with level
-    for(let i=0;i<lv;i++){
-      const b=document.createElement("div");b.className="Character";
-      b.style.left=(Math.random()*(screenW-64))+"px";
-      b.style.top=linesY[i]+"px";
-      b.innerHTML=`<img class="Character_spritesheet pixelart face-left" src="blocker.png">`;
-      b.dataset.vx=(Math.random()>.5?baseSpeed:-baseSpeed);
-      b.dataset.vy=(Math.random()>.5?baseSpeed:-baseSpeed);
-      document.body.appendChild(b);blockers.push(b);
+  function checkCollision() {
+    const playerRect = player.getBoundingClientRect();
+    for (let i=0;i<blockers.length;i++) {
+      const bRect = blockers[i].getBoundingClientRect();
+      if (
+        playerRect.left < bRect.right &&
+        playerRect.right > bRect.left &&
+        playerRect.top < bRect.bottom &&
+        playerRect.bottom > bRect.top
+      ) {
+        return true;
+      }
     }
+    return false;
   }
-  function updatePlayerInfo(){
-    const el=document.getElementById("playerInfo");
-    if(el) el.innerHTML=`${playerName}<br>Level ${currentLevel}/${maxLevel}`;
+
+  function updatePlayerInfo() {
+    document.getElementById("playerInfo").innerText = `${playerName} | Level: ${currentLevel}`;
   }
+
+  // === KEYBOARD ===
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "ArrowLeft" || e.key.toLowerCase() === "a") movePlayer(-20, 0);
+    if (e.key === "ArrowRight" || e.key.toLowerCase() === "d") movePlayer(20, 0);
+    if (e.key === "ArrowUp" || e.key.toLowerCase() === "w") movePlayer(0, -20);
+    if (e.key === "ArrowDown" || e.key.toLowerCase() === "s") movePlayer(0, 20);
+  });
+
+  // === JOYSTICK ===
+  const joystick = document.getElementById("joystick");
+  const stick = document.getElementById("stick");
+  let joyActive = false;
+
+  joystick.addEventListener("touchstart", e => {
+    joyActive = true;
+  });
+  joystick.addEventListener("touchend", e => {
+    joyActive = false;
+    stick.style.left = "30px";
+    stick.style.top = "30px";
+  });
+  joystick.addEventListener("touchmove", e => {
+    if (!joyActive) return;
+    const touch = e.touches[0];
+    const rect = joystick.getBoundingClientRect();
+    const dx = touch.clientX - (rect.left + rect.width/2);
+    const dy = touch.clientY - (rect.top + rect.height/2);
+    stick.style.left = Math.min(Math.max(dx + 30, 0), 60) + "px";
+    stick.style.top = Math.min(Math.max(dy + 30, 0), 60) + "px";
+    if (dx < -20) movePlayer(-10,0);
+    if (dx > 20) movePlayer(10,0);
+    if (dy < -20) movePlayer(0,-10);
+    if (dy > 20) movePlayer(0,10);
+  });
+
+  // === GAME LOOP ===
+  function gameLoop() {
+    if (gameEnded) return;
+
+    updateBlockers();
+
+    if (checkCollision()) {
+      alert("❌ You got tagged! Game Over!");
+      gameEnded = true;
+      return;
+    }
+
+    if (y <= screenH * 0.05) {
+      gameEnded = true;
+      setTimeout(() => {
+        currentLevel++;
+        if (currentLevel > maxLevel) {
+          alert("🎉 You win all levels!");
+        } else {
+          x = screenW * 0.5;
+          y = screenH * 0.85;
+          player.style.left = x + "px";
+          player.style.top = y + "px";
+          createBlockersForLevel(currentLevel);
+          updatePlayerInfo();
+          gameEnded = false;
+        }
+      }, 1500);
+    }
+
+    requestAnimationFrame(gameLoop);
+  }
+
+  createBlockersForLevel(currentLevel);
+  updatePlayerInfo();
+  gameLoop();
 });
 </script>
 </body>
