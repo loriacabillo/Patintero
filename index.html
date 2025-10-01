@@ -161,11 +161,6 @@ body {
   width: calc(128px * var(--pixel-size));
   position: absolute;
 }
-.Character_shadow {
-  position: absolute;
-  width: calc(32px * var(--pixel-size));
-  height: calc(32px * var(--pixel-size));
-}
 .pixelart { image-rendering: pixelated; }
 .face-down { top: 0; }
 .face-right { top: calc(-32px * var(--pixel-size)); }
@@ -204,7 +199,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let blockers = [];
   let linesY = [];
 
-  // Leaderboard storage
+  // Leaderboard
   function getLeaderboard() {
     return JSON.parse(localStorage.getItem("patinteroLeaderboard") || "[]");
   }
@@ -219,7 +214,6 @@ document.addEventListener("DOMContentLoaded", () => {
     lb.sort((a,b)=>b.levels-a.levels);
     saveLeaderboard(lb);
   }
-
   function showLeaderboard() {
     const lb = getLeaderboard().slice(0,10);
     let html = "<h2>🏆 Leaderboard</h2><ul>";
@@ -268,13 +262,12 @@ document.addEventListener("DOMContentLoaded", () => {
     const player=document.createElement("div");
     player.className="Character"; x=screenW*0.5; y=screenH*0.85;
     player.style.left=x+"px"; player.style.top=y+"px";
-    player.innerHTML=`<img class="Character_shadow pixelart" src="shadow.png">
-      <img class="Character_spritesheet pixelart face-down" src="AjFP5.png">`;
+    player.innerHTML=`<img class="Character_spritesheet pixelart face-down" src="AjFP5.png">`;
     document.body.appendChild(player);
 
     createBlockersForLevel(currentLevel);
 
-    // Movement
+    // Move Player
     function movePlayer(dx,dy,dir){
       if(gameEnded)return;
       x=Math.max(0,Math.min(screenW-64,x+dx));
@@ -292,54 +285,23 @@ document.addEventListener("DOMContentLoaded", () => {
       if(e.key==="ArrowDown"||e.key==="s")movePlayer(0,20,"face-down");
     });
 
-    // Joystick
-    const joystick=document.createElement("div"); joystick.id="joystick";
-    const knob=document.createElement("div"); knob.id="knob"; joystick.appendChild(knob);
-    document.body.appendChild(joystick);
-    if("ontouchstart"in window) joystick.style.display="block";
-    let active=false,cx=0,cy=0,dx=0,dy=0,intv;
-    joystick.ontouchstart=e=>{
-      active=true; const r=joystick.getBoundingClientRect();
-      cx=r.left+r.width/2; cy=r.top+r.height/2;
-      moveKnob(e.touches[0].clientX,e.touches[0].clientY); start();
-    };
-    joystick.ontouchmove=e=>active&&moveKnob(e.touches[0].clientX,e.touches[0].clientY);
-    joystick.ontouchend=()=>{active=false;dx=dy=0;knob.style.transform="translate(-50%,-50%)";stop();};
-    function moveKnob(tx,ty){
-      let ex=tx-cx,ey=ty-cy,d=Math.hypot(ex,ey),m=30;
-      if(d>m){ex*=m/d;ey*=m/d;} dx=ex/m;dy=ey/m;
-      knob.style.transform=`translate(-50%,-50%) translate(${ex}px,${ey}px)`;
-    }
-    function start(){intv=setInterval(()=>{
-      if(!active)return; let th=.3;
-      if(Math.abs(dx)>th||Math.abs(dy)>th){
-        if(Math.abs(dy)>Math.abs(dx)){
-          if(dy<-th)movePlayer(0,-20,"face-up");
-          else if(dy>th)movePlayer(0,20,"face-down");
-        }else{
-          if(dx<-th)movePlayer(-20,0,"face-left");
-          else if(dx>th)movePlayer(20,0,"face-right");
-        }
-      }
-    },150);}
-    function stop(){clearInterval(intv);}
-
-    // Blocker AI
+    // Blocker AI with zigzag + speed scaling
     setInterval(()=>{
       if(gameEnded)return;
       let tagged=false;
       blockers.forEach(b=>{
         let bx=parseInt(b.style.left),by=parseInt(b.style.top);
-        let step=10;
-        let newX=bx+b.dir*step;
-        if(newX<0||newX>screenW-64)b.dir*=-1;
-        else b.style.left=newX+"px";
+        let vx=parseFloat(b.dataset.vx),vy=parseFloat(b.dataset.vy);
+        bx+=vx; by+=vy;
+        if(bx<=0||bx>=screenW-64) b.dataset.vx=-vx;
+        if(by<=linesY[0]-50||by>=linesY[linesY.length-1]+50) b.dataset.vy=-vy;
+        b.style.left=bx+"px"; b.style.top=by+"px";
         // collision
-        if(Math.abs(x-parseInt(b.style.left))<40 && Math.abs(y-by)<40) tagged=true;
+        if(Math.abs(x-bx)<40 && Math.abs(y-by)<40) tagged=true;
       });
       if(tagged){ gameOver(); return; }
       if(y<linesY[currentLevel-1]-50) levelComplete();
-    },200);
+    },60);
 
     function levelComplete(){
       gameEnded=true;
@@ -368,11 +330,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function createBlockersForLevel(lv){
     blockers.forEach(b=>b.remove());blockers=[];
+    let baseSpeed=2+lv; // speed scales with level
     for(let i=0;i<lv;i++){
       const b=document.createElement("div");b.className="Character";
-      b.style.left=screenW*.5+"px";b.style.top=linesY[i]+"px";
-      b.innerHTML=`<img class="Character_shadow pixelart" src="shadow.png"><img class="Character_spritesheet pixelart face-left" src="blocker.png">`;
-      b.dir=Math.random()<.5?-1:1;
+      b.style.left=(Math.random()*(screenW-64))+"px";
+      b.style.top=linesY[i]+"px";
+      b.innerHTML=`<img class="Character_spritesheet pixelart face-left" src="blocker.png">`;
+      b.dataset.vx=(Math.random()>.5?baseSpeed:-baseSpeed);
+      b.dataset.vy=(Math.random()>.5?baseSpeed:-baseSpeed);
       document.body.appendChild(b);blockers.push(b);
     }
   }
