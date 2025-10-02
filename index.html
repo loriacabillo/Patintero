@@ -577,50 +577,54 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // === MAIN GAME LOOP ===
-    setInterval(() => {
-      if (gameEnded) return;
+setInterval(() => {
+  if (gameEnded) return;
 
-      const targetLineY = linesY[currentLevel - 1];
-      const playerCenterY = y + PLAYER_SIZE / 2;
+  const targetLineY = linesY[currentLevel - 1];
+  const playerCenterY = y + PLAYER_SIZE / 2;
 
-      // ✅ FIX: allow finish line detection properly (mobile issue)
-      if (typeof targetLineY !== 'undefined' && playerCenterY <= targetLineY) {
-        gameEnded = true;
-        if (currentLevel < maxLevel) {
-          showLevelComplete(player); // pass player object
-        } else {
-          updatePlayerScore(playerName, maxLevel);
-          // ... (win screen same as before) ...
-        }
-        return;
-      }
-
-      // === BLOCKERS ZIGZAG ===
-      blockers.forEach((blk, i) => {
-        let blockerX = parseInt(blk.style.left, 10);
-        let blockerY = parseInt(blk.style.top, 10);
-
-        let step = 8; // zigzag speed
-        let dir = blockerDirections[i];
-        blockerX += dir * step;
-
-        // Bounce back when hitting walls
-        if (blockerX <= 0 || blockerX >= screenW - 64) {
-          blockerDirections[i] *= -1;
-        }
-
-        blk.style.left = blockerX + "px";
-        blk.style.top = blockerY + "px";
-
-        // Collision check
-        const distanceX = Math.abs(x - blockerX);
-        const distanceY = Math.abs(y - blockerY);
-        if (distanceX < 36 && distanceY < 36) {
-          gameOverScreen();
-        }
-      });
-    }, 120);
+  // ✅ FIX: allow finish line detection properly (mobile issue)
+  if (typeof targetLineY !== 'undefined' && playerCenterY <= targetLineY) {
+    gameEnded = true;
+    if (currentLevel < maxLevel) {
+      showLevelComplete(player); // pass player object
+    } else {
+      updatePlayerScore(playerName, maxLevel);
+      // ... (win screen same as before) ...
+    }
+    return;
   }
+
+  // === BLOCKERS ZIGZAG ===
+  blockers.forEach((blk, i) => {
+    let blockerX = parseInt(blk.style.left, 10);
+    let blockerY = parseInt(blk.style.top, 10);
+
+    // ⚡ Slower blockers on mobile — speed increases each level
+    let step = 2 + currentLevel;  
+    // Level 1 → speed = 3 (slow)  
+    // Level 5 → speed = 7 (challenging but fair)
+
+    let dir = blockerDirections[i];
+    blockerX += dir * step;
+
+    // Bounce back when hitting walls
+    if (blockerX <= 0 || blockerX >= screenW - 64) {
+      blockerDirections[i] *= -1;
+    }
+
+    blk.style.left = blockerX + "px";
+    blk.style.top = blockerY + "px";
+
+    // Collision check
+    const distanceX = Math.abs(x - blockerX);
+    const distanceY = Math.abs(y - blockerY);
+    if (distanceX < 36 && distanceY < 36) {
+      gameOverScreen();
+    }
+  });
+}, 120);
+}
 
   // === LEVEL COMPLETE ===
   function showLevelComplete(player) {
