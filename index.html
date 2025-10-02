@@ -201,7 +201,7 @@ document.addEventListener("DOMContentLoaded", () => {
     saveLeaderboard(lb);
   }
 
-  function showLeaderboard() {
+  function showLeaderboard(showHomeAfter = false) {
     const lb = getLeaderboard();
     const top10 = lb.slice(0, 10);
     let html = '<h2>🏆 Leaderboard</h2><p>Top 10 Players by Levels Completed</p><ul>';
@@ -213,10 +213,16 @@ document.addEventListener("DOMContentLoaded", () => {
     lbOverlay.id = "lbOverlay";
     lbOverlay.innerHTML = html;
     document.body.appendChild(lbOverlay);
-    document.getElementById("closeLb").addEventListener("click", () => lbOverlay.remove());
+    document.getElementById("closeLb").addEventListener("click", () => {
+      lbOverlay.remove();
+      if (showHomeAfter) {
+        document.getElementById("homeScreen").style.display = "flex";
+      }
+    });
   }
 
-  leaderboardBtn.addEventListener("click", showLeaderboard);
+  leaderboardBtn.addEventListener("click", () => showLeaderboard(false));
+
 
   // Start flow: ask for player name then init game
   startBtn.addEventListener("click", () => {
