@@ -123,9 +123,22 @@ body {
 
 @keyframes moveSpritesheet { from { transform: translate3d(0px,0,0) } to { transform: translate3d(-100%,0,0) } }
 
-/* FINISH LINE STYLE */
-.finish-line { position: absolute; left: 0; width: 100%; height: 6px; background: linear-gradient(to right, #ff0000, #ffff00, #00ff00); animation: pulseGlow 1.5s infinite alternate; box-shadow: 0 0 15px rgba(255,255,0,0.8); z-index: 900; transform: translateY(-50%); }
-@keyframes pulseGlow { from { opacity: 0.5; box-shadow: 0 0 5px rgba(255,255,0,0.5); } to { opacity: 1; box-shadow: 0 0 20px rgba(255,255,0,1); } }
+/* FINISH LINE STYLE (reduced glow so it won’t block text) */
+.finish-line {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: 6px;
+  background: linear-gradient(to right, #ff0000, #ffff00, #00ff00);
+  animation: pulseGlow 1.5s infinite alternate;
+  box-shadow: 0 0 6px rgba(255,255,0,0.4);
+  z-index: 400;
+  transform: translateY(-50%);
+}
+@keyframes pulseGlow {
+  from { opacity: 0.4; box-shadow: 0 0 3px rgba(255,255,0,0.3); }
+  to   { opacity: 0.8; box-shadow: 0 0 8px rgba(255,255,0,0.5); }
+}
 
 /* small responsiveness */
 @media (max-width:600px) {
@@ -217,6 +230,12 @@ document.addEventListener("DOMContentLoaded", () => {
       lbOverlay.remove();
       if (showHomeAfter) {
         document.getElementById("homeScreen").style.display = "flex";
+      } else {
+        // restore game over or win overlay if exists
+        const gameOverOverlay = document.getElementById("gameOverOverlay");
+        const winOverlay = document.getElementById("winOverlay");
+        if (gameOverOverlay) gameOverOverlay.style.display = "flex";
+        if (winOverlay) winOverlay.style.display = "flex";
       }
     });
   }
@@ -246,7 +265,6 @@ document.addEventListener("DOMContentLoaded", () => {
       const name = usernameInput.value.trim();
       if (!name) { alert("Please enter a username to start the game!"); return; }
       playerName = name;
-      // Save a simple snapshot so a restart can access it if needed
       localStorage.setItem('patinteroPlayer', JSON.stringify({ name: playerName }));
       nameOverlay.remove();
       initGame();
@@ -256,7 +274,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   function initGame() {
-    // update screen dims in case of orientation change
+    // update screen dims
     screenW = window.innerWidth;
     screenH = window.innerHeight;
 
@@ -293,7 +311,6 @@ document.addEventListener("DOMContentLoaded", () => {
     // create player element
     const player = document.createElement("div");
     player.className = "Character";
-    // start in horizontal center, near bottom
     let x = screenW * 0.5;
     let y = screenH - 100;
     player.style.left = x + "px";
@@ -305,7 +322,7 @@ document.addEventListener("DOMContentLoaded", () => {
     `;
     document.body.appendChild(player);
 
-    // create blockers and finish line for current level
+    // create blockers and finish line
     createBlockersForLevel(currentLevel);
     createFinishLine(currentLevel);
 
@@ -321,7 +338,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
     if (isTouch) joystick.style.display = 'block';
 
-    // joystick handling
     const joystickElement = document.getElementById('joystick');
     const knobElement = document.getElementById('knob');
 
@@ -356,7 +372,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const deltaX = touchX - joystickCenterX;
       const deltaY = touchY - joystickCenterY;
       const dist = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
-      const maxDist = 30; // max drag distance
+      const maxDist = 30;
       let normalizedDx = 0;
       let normalizedDy = 0;
       if (dist > maxDist) {
@@ -382,239 +398,176 @@ document.addEventListener("DOMContentLoaded", () => {
         moveBasedOnJoystick();
       }, 120);
     }
-    function stopJoystickMovement() { if (joystickInterval) { clearInterval(joystickInterval); joystickInterval = null; } }
+    function stopJoystickMovement() { if (joystickInterval) clearInterval(joystickInterval); }
 
     function moveBasedOnJoystick() {
-      if (!joystickActive || gameEnded) return;
-      const threshold = 0.25;
-      let dx = 0, dy = 0, direction = 'face-down';
-      if (Math.abs(currentDx) > threshold || Math.abs(currentDy) > threshold) {
-        if (Math.abs(currentDy) > Math.abs(currentDx)) {
-          if (currentDy < -threshold) { dy = -12; direction = 'face-up'; }
-          else if (currentDy > threshold) { dy = 12; direction = 'face-down'; }
-        } else {
-          if (currentDx < -threshold) { dx = -12; direction = 'face-left'; }
-          else if (currentDx > threshold) { dx = 12; direction = 'face-right'; }
-        }
-        movePlayer(dx, dy, direction);
-      }
+      const moveX = Math.round(currentDx * 20);
+      const moveY = Math.round(currentDy * 20);
+      if (moveX === 0 && moveY === 0) return;
+      movePlayer(moveX, moveY);
     }
 
-    // keyboard movement (desktop)
-    window.addEventListener("keydown", e => {
+    // keyboard
+    document.addEventListener("keydown", (e) => {
       if (gameEnded) return;
-      if (e.key === "ArrowLeft" || e.key.toLowerCase() === "a") movePlayer(-16, 0, "face-left");
-      if (e.key === "ArrowRight" || e.key.toLowerCase() === "d") movePlayer(16, 0, "face-right");
-      if (e.key === "ArrowUp" || e.key.toLowerCase() === "w") movePlayer(0, -16, "face-up");
-      if (e.key === "ArrowDown" || e.key.toLowerCase() === "s") movePlayer(0, 16, "face-down");
+      switch (e.key.toLowerCase()) {
+        case "arrowup":
+        case "w": movePlayer(0, -20); break;
+        case "arrowdown":
+        case "s": movePlayer(0, 20); break;
+        case "arrowleft":
+        case "a": movePlayer(-20, 0); break;
+        case "arrowright":
+        case "d": movePlayer(20, 0); break;
+      }
     });
 
-    // Player movement implementation
-    function movePlayer(dx, dy, direction) {
-      if (gameEnded) return;
-      x += dx;
-      y += dy;
-      // bounds
-      x = Math.max(PLAYER_SIZE/2, Math.min(screenW - PLAYER_SIZE/2, x));
-      y = Math.max(PLAYER_SIZE/2, Math.min(screenH - PLAYER_SIZE/2, y));
-      const sprite = player.querySelector(".Character_spritesheet");
-      if (sprite) sprite.className = `Character_spritesheet pixelart ${direction}`;
+    function movePlayer(dx, dy) {
+      x += dx; y += dy;
+      x = Math.max(0, Math.min(x, screenW));
+      y = Math.max(0, Math.min(y, screenH));
       player.style.left = x + "px";
       player.style.top = y + "px";
+      if (dy < 0) player.setAttribute("facing", "up");
+      else if (dy > 0) player.setAttribute("facing", "down");
+      else if (dx < 0) player.setAttribute("facing", "left");
+      else if (dx > 0) player.setAttribute("facing", "right");
+
+      checkCollisions();
+      checkLevelComplete();
     }
 
-    // show level complete overlay
-    function showLevelComplete() {
-      const overlay = document.getElementById('levelCompleteOverlay');
-      const messageEl = document.getElementById('completeMessage');
-      messageEl.textContent = `Level ${currentLevel} Complete!`;
-      overlay.style.display = 'block';
-      // short pause then advance
-      setTimeout(() => {
-        overlay.style.display = 'none';
-        currentLevel++;
-        // reset position
-        x = screenW * 0.5;
-        y = screenH - 100;
-        player.style.left = x + "px";
-        player.style.top = y + "px";
-        // prepare for next level (if any)
-        if (currentLevel <= maxLevel) {
-          createBlockersForLevel(currentLevel);
-          createFinishLine(currentLevel);
-          updatePlayerInfo();
-          gameEnded = false;
-        } else {
-          // player finished all levels
-          updatePlayerScore(playerName, maxLevel);
-          showWinOverlay();
+    function checkCollisions() {
+      const playerRect = player.getBoundingClientRect();
+      for (let b of blockers) {
+        const bRect = b.getBoundingClientRect();
+        if (!(playerRect.right < bRect.left || playerRect.left > bRect.right || playerRect.bottom < bRect.top || playerRect.top > bRect.bottom)) {
+          gameOver();
+          return;
         }
-      }, 1300);
-    }
-
-    // Win overlay
-    function showWinOverlay() {
-      const winScreen = document.createElement("div");
-      winScreen.className = "overlay-card";
-      winScreen.id = "winOverlay";
-      winScreen.innerHTML = `
-        <h2>🎉 YOU WIN!</h2>
-        <p>You completed all ${maxLevel} levels!</p>
-        <button class="submit-btn" id="playAgainBtn">🔁 Play Again</button>
-        <button id="viewLbWin" class="submit-btn">🏆 View Leaderboard</button>
-      `;
-      document.body.appendChild(winScreen);
-      document.getElementById("playAgainBtn").addEventListener("click", () => location.reload());
-      document.getElementById("viewLbWin").addEventListener("click", () => {
-        winScreen.remove();
-        showLeaderboard();
-      });
-    }
-
-    // === Main game tick: blockers movement, collisions, crossing detection ===
-    const tickInterval = setInterval(() => {
-      if (gameEnded) return;
-
-      // crossing check (player reaching line for current level)
-      const targetLineY = linesY[currentLevel - 1];
-      const playerCenterY = y;
-      if (typeof targetLineY !== 'undefined' && playerCenterY <= targetLineY) {
-        // crossed before blockers tag
-        gameEnded = true;
-        // advance or win handled by showLevelComplete
-        showLevelComplete();
-        return;
       }
+    }
 
-      // blockers move & collision detection
-      let tagged = false;
-      const playerCenterX = x;
-      const playerCenterYNow = y;
-
-      blockers.forEach((blk, index) => {
-        // parse stored motion state
-        let blockerX = parseFloat(blk.style.left) || (screenW * 0.5);
-        const baseY = linesY[index] || (screenH * 0.5);
-        let phase = parseFloat(blk.dataset.phase) || 0;
-        let amplitude = parseFloat(blk.dataset.amp) || 40;
-        let speed = parseFloat(blk.dataset.speed) || 6;
-
-        // adapt speed by level and by touch device (slower on touch)
-        const speedFactor = isTouch ? 0.6 : 1;
-        const effectiveStep = Math.max(2, Math.round(speed * speedFactor + currentLevel * 0.6));
-
-        // Horizontal chase toward player (but with limited per-tick step)
-        const dx = playerCenterX - blockerX;
-        if (Math.abs(dx) > effectiveStep) {
-          blockerX += effectiveStep * Math.sign(dx);
-        } else {
-          blockerX = blockerX + dx; // small correction
-        }
-
-        // Zigzag vertical oscillation (so blocker looks like moving in zigzag pattern along the line)
-        phase += 0.08 + (index * 0.02);
-        const verticalOffset = Math.sin(phase + (Date.now() / 400)) * (amplitude * 0.25); // subtle
-        blk.dataset.phase = phase;
-
-        // Apply positions
-        blk.style.left = blockerX + "px";
-        blk.style.top = (baseY + verticalOffset) + "px";
-
-        // face toward player
-        const dy = playerCenterYNow - (baseY + verticalOffset);
-        let faceDir;
-        if (Math.abs(dy) > Math.abs(dx)) faceDir = dy > 0 ? "face-down" : "face-up";
-        else faceDir = dx > 0 ? "face-right" : "face-left";
-        const sprite = blk.querySelector(".Character_spritesheet");
-        if (sprite) sprite.className = `Character_spritesheet pixelart ${faceDir}`;
-
-        // collision using centers (use player's center and blocker's center)
-        const distanceX = Math.abs(playerCenterX - blockerX);
-        const distanceY = Math.abs(playerCenterYNow - (baseY + verticalOffset));
-        const collisionThreshold = 42; // tuned threshold
-        if (distanceX < collisionThreshold && distanceY < collisionThreshold) {
-          tagged = true;
-        }
-      });
-
-      if (tagged) {
-        gameEnded = true;
-        // save completed levels (player completed previous levels)
-        updatePlayerScore(playerName, Math.max(0, currentLevel - 1));
-        const gameOver = document.createElement("div");
-        gameOver.className = "overlay-card";
-        gameOver.id = "gameOverOverlay";
-        gameOver.innerHTML = `
-          <h2>😵 GAME OVER!</h2>
-          <p>You were tagged at Level ${currentLevel}! (Completed: ${Math.max(0, currentLevel-1)} levels)</p>
-          <button class="submit-btn" id="restartBtn">🔁 Restart</button>
-          <button id="viewLbAfter" class="submit-btn">🏆 View Leaderboard</button>
-        `;
-        document.body.appendChild(gameOver);
-        document.getElementById("restartBtn").addEventListener("click", () => location.reload());
-        document.getElementById("viewLbAfter").addEventListener("click", () => {
-          gameOver.remove();
-          showLeaderboard();
-        });
+    function checkLevelComplete() {
+      if (!finishLine) return;
+      const playerRect = player.getBoundingClientRect();
+      const finishRect = finishLine.getBoundingClientRect();
+      if (!(playerRect.right < finishRect.left || playerRect.left > finishRect.right || playerRect.bottom < finishRect.top || playerRect.top > finishRect.bottom)) {
+        levelComplete();
       }
+    }
 
-    }, 180); // game tick frequency (lower = smoother, but heavier). 180ms is a good compromise.
+    function updatePlayerInfo() {
+      const infoDiv = document.getElementById("playerInfo");
+      infoDiv.textContent = playerName ? `Player: ${playerName} | Level: ${currentLevel}` : `Level: ${currentLevel}`;
+    }
 
-    // helper functions that need access to closure variables (player, linesY, blockers)
     function createBlockersForLevel(level) {
-      // remove old blockers
       blockers.forEach(b => b.remove());
       blockers = [];
-      // clamp level to available lines
-      const safeLevel = Math.max(1, Math.min(level, linesY.length));
-      for (let i = 0; i < safeLevel; i++) {
+      linesY.forEach((lineY, index) => {
         const blocker = document.createElement("div");
         blocker.className = "Character";
-        // initial X spread: distribute horizontally so they don't all stack
-        const spread = (i + 1) * 60;
-        const startX = (screenW * 0.5) + ((i % 2 === 0) ? -spread : spread);
-        blocker.style.left = startX + "px";
-        blocker.style.top = linesY[i] + "px";
-        blocker.setAttribute("facing", "down");
-        // attach some movement parameters per blocker
-        blocker.dataset.phase = Math.random() * Math.PI * 2;
-        blocker.dataset.amp = 28 + (i * 6);
-        blocker.dataset.speed = 4 + Math.random() * 4; // base speed
         blocker.innerHTML = `
           <img class="Character_shadow pixelart" src="https://s3-us-west-2.amazonaws.com/s.cdpn.io/21542/DemoRpgCharacterShadow.png" />
-          <img class="Character_spritesheet pixelart face-down" src="blocker.png" />
+          <img class="Character_spritesheet pixelart face-right" src="blocker.png" />
         `;
+        blocker.style.left = (screenW * 0.5) + "px";
+        blocker.style.top = lineY + "px";
         document.body.appendChild(blocker);
         blockers.push(blocker);
+        const speed = 3 + level + index;
+        animateBlocker(blocker, speed);
+      });
+    }
+
+    function animateBlocker(blocker, speed) {
+      let direction = Math.random() < 0.5 ? 1 : -1;
+      function move() {
+        if (gameEnded) return;
+        let left = parseInt(blocker.style.left);
+        left += direction * speed;
+        if (left < 50 || left > screenW - 50) {
+          direction *= -1;
+        }
+        blocker.style.left = left + "px";
+        requestAnimationFrame(move);
       }
+      move();
     }
 
     function createFinishLine(level) {
       if (finishLine) finishLine.remove();
-      const idx = Math.max(0, Math.min(level - 1, linesY.length - 1));
       finishLine = document.createElement("div");
       finishLine.className = "finish-line";
-      finishLine.style.top = Math.round(linesY[idx]) + "px";
+      finishLine.style.top = (screenH * 0.1) + "px";
       document.body.appendChild(finishLine);
     }
 
-    function updatePlayerInfo() {
-      const playerInfo = document.getElementById("playerInfo");
-      if (playerInfo) playerInfo.innerHTML = `${playerName}<br>Level ${currentLevel}/${maxLevel}`;
+    function levelComplete() {
+      currentLevel++;
+      if (currentLevel > maxLevel) { winGame(); return; }
+      showLevelComplete();
+      createBlockersForLevel(currentLevel);
+      createFinishLine(currentLevel);
+      updatePlayerInfo();
+      x = screenW * 0.5;
+      y = screenH - 100;
+      player.style.left = x + "px";
+      player.style.top = y + "px";
     }
+
+    function showLevelComplete() {
+      const overlay = document.getElementById("levelCompleteOverlay");
+      const messageEl = document.getElementById("completeMessage");
+      if (currentLevel === 1) {
+        messageEl.textContent = `Complete: Level ${currentLevel}`;
+      } else {
+        messageEl.textContent = `Complete: Level ${currentLevel}s`;
+      }
+      overlay.style.display = "block";
+      setTimeout(() => { overlay.style.display = "none"; }, 2000);
+    }
+
+    function gameOver() {
+      if (gameEnded) return;
+      gameEnded = true;
+      updatePlayerScore(playerName, currentLevel - 1);
+      const overlay = document.createElement("div");
+      overlay.className = "overlay-card";
+      overlay.id = "gameOverOverlay";
+      overlay.innerHTML = `<h2>Game Over</h2><p>You reached Level ${currentLevel}</p>
+        <button class="submit-btn" id="restartBtn">Restart</button>
+        <button class="submit-btn" id="lbBtn">Leaderboard</button>`;
+      document.body.appendChild(overlay);
+      document.getElementById("restartBtn").addEventListener("click", () => { location.reload(); });
+      document.getElementById("lbBtn").addEventListener("click", () => {
+        overlay.style.display = "none";
+        showLeaderboard(false);
+      });
+    }
+
+    function winGame() {
+      if (gameEnded) return;
+      gameEnded = true;
+      updatePlayerScore(playerName, maxLevel);
+      const overlay = document.createElement("div");
+      overlay.className = "overlay-card";
+      overlay.id = "winOverlay";
+      overlay.innerHTML = `<h2>You Win!</h2><p>Congratulations, ${playerName}!</p>
+        <button class="submit-btn" id="restartBtn2">Restart</button>
+        <button class="submit-btn" id="lbBtn2">Leaderboard</button>`;
+      document.body.appendChild(overlay);
+      document.getElementById("restartBtn2").addEventListener("click", () => { location.reload(); });
+      document.getElementById("lbBtn2").addEventListener("click", () => {
+        overlay.style.display = "none";
+        showLeaderboard(false);
+      });
+    }
+
   } // end initGame
 
-  // createBlockersForLevel & createFinishLine are defined inside initGame's closure above,
-  // but we ensure the global references are available by declaring placeholders earlier if needed.
-
-  // If the player reloads and localStorage contains a saved name, prefill home screen (optional)
-  const saved = JSON.parse(localStorage.getItem('patinteroPlayer') || 'null');
-  if (saved && saved.name) {
-    // show player's name subtly on home screen (not automatic start)
-    // You can uncomment this to auto-fill a future name input
-    // console.log('Saved player:', saved.name);
-  }
-});
+}); // end DOMContentLoaded
 </script>
 </body>
 </html>
