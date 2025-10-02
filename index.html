@@ -415,10 +415,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Lines for blockers (from bottom to top)
     linesY = [
-      screenH * 0.50,
-      screenH * 0.40,
-      screenH * 0.35,
-      screenH * 0.20,
+      screenH * 0.75,
+      screenH * 0.60,
+      screenH * 0.45,
+      screenH * 0.30,
       screenH * 0.15
     ];
 
@@ -652,7 +652,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const blockerY = parseInt(blk.style.top, 10);
         const dx = playerX - blockerX;
         const dy = y - blockerY;
-        const step = 10; // blocker speed (slightly slower)
+        const step = 16; // blocker speed (slightly slower)
 
         let newBlockerX = blockerX;
 
