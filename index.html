@@ -696,9 +696,37 @@ setInterval(() => {
     gameOver.innerHTML = `
       <h2>😵 GAME OVER!</h2>
       <p>You were tagged at Level ${currentLevel}!</p>
-      <button class="submit-btn" onclick="location.reload()">🔁 Restart</button>
+      <button class="submit-btn" onclick="resetGame()">🔁 Restart</button>
     `;
     document.body.appendChild(gameOver);
+  }
+
+  // ✅ PUT RESET FUNCTION HERE
+  function resetGame() {
+    // Remove old overlays
+    const oldGameOver = document.getElementById("gameOverOverlay");
+    if (oldGameOver) oldGameOver.remove();
+    if (finishLine) finishLine.remove();
+    blockers.forEach(blk => blk.remove());
+
+    blockers = [];
+    blockerDirections = [];
+    currentLevel = 1;
+    gameEnded = false;
+    x = screenW * 0.5;
+    y = screenH - 100;
+
+    // Reset player
+    const player = document.querySelector(".Character");
+    if (player) {
+      player.style.left = x + "px";
+      player.style.top = y + "px";
+    }
+
+    // Reset UI + level
+    updatePlayerInfo();
+    createBlockersForLevel(currentLevel);
+    createFinishLine(currentLevel);
   }
 });
 </script>
