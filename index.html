@@ -127,19 +127,63 @@ body {
 .finish-line { position: absolute; left: 0; width: 100%; height: 6px; background: linear-gradient(to right, #ff0000, #ffff00, #00ff00); animation: pulseGlow 1.5s infinite alternate; box-shadow: 0 0 15px rgba(255,255,0,0.8); z-index: 900; transform: translateY(-50%); opacity: 0.6; }
 @keyframes pulseGlow { from { opacity: 0.5; box-shadow: 0 0 5px rgba(255,255,0,0.5); } to { opacity: 1; box-shadow: 0 0 20px rgba(255,255,0,1); } }
 
-/* Enhanced responsiveness for smaller devices */
+/* Devices up to 600px wide */
 @media (max-width: 600px) {
-  .overlay-card { padding: 6vw; }
-  .overlay-card h2 { font-size: clamp(14px, 6vw, 28px); }
-  #joystick { bottom: 5vw; left: 5vw; }
+  .overlay-card {
+    padding: 6vw;
+  }
+  .overlay-card h2 {
+    font-size: clamp(16px, 5.5vw, 28px);
+    line-height: 1.2;
+  }
+  .overlay-card p {
+    font-size: clamp(12px, 4vw, 18px);
+    line-height: 1.4;
+  }
+  #joystick {
+    position: fixed;
+    bottom: 6vw;
+    left: 6vw;
+    width: 28vw;
+    height: 28vw;
+    max-width: 110px;
+    max-height: 110px;
+  }
+  #knob {
+    width: 11vw;
+    height: 11vw;
+    max-width: 44px;
+    max-height: 44px;
+  }
 }
+
+/* Devices up to 400px wide */
 @media (max-width: 400px) {
-  .overlay-card { padding: 4vw; }
-  .overlay-card h2 { font-size: clamp(12px, 7vw, 24px); }
-  .overlay-card p { font-size: clamp(8px, 3.5vw, 14px); }
-  #joystick { width: 25vw; height: 25vw; max-width: 100px; max-height: 100px; }
-  #knob { width: 10vw; height: 10vw; max-width: 40px; max-height: 40px; }
+  .overlay-card {
+    padding: 5vw;
+  }
+  .overlay-card h2 {
+    font-size: clamp(14px, 6.5vw, 24px);
+  }
+  .overlay-card p {
+    font-size: clamp(10px, 4vw, 16px);
+  }
+  #joystick {
+    bottom: 5vw;
+    left: 5vw;
+    width: 30vw;
+    height: 30vw;
+    max-width: 100px;
+    max-height: 100px;
+  }
+  #knob {
+    width: 12vw;
+    height: 12vw;
+    max-width: 40px;
+    max-height: 40px;
+  }
 }
+
 </style>
 </head>
 <body>
