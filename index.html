@@ -132,6 +132,13 @@ body {
   .overlay-card { padding: 6vw; }
   .overlay-card h2 { font-size: 6vw; }
 }
+@media (max-width: 400px) {
+  .overlay-card { padding: 4vw; }
+  .overlay-card h2 { font-size: clamp(12px, 7vw, 24px); }
+  .overlay-card p { font-size: clamp(8px, 3.5vw, 14px); }
+  #joystick { width: 25vw; height: 25vw; max-width: 100px; max-height: 100px; }
+  #knob { width: 10vw; height: 10vw; max-width: 40px; max-height: 40px; }
+}
 </style>
 </head>
 <body>
